@@ -16,7 +16,7 @@ from aegis import AegisClient, AgentManifest
 
 async def main():
     # Create a client
-    async with AegisClient("https://api.reely.dev", api_key="your-api-key") as client:
+    async with AegisClient("https://api.100monkeys.ai", api_key="your-api-key") as client:
         # Load agent manifest
         manifest = AgentManifest.from_yaml_file("agent.yaml")
         
