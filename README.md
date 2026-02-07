@@ -103,7 +103,7 @@ class AgentManifest:
 
 ## Examples
 
-See the [examples repository](https://github.com/aent-ai/aegis-examples) for complete examples:
+See the [examples repository](https://github.com/100monkeys-ai/aegis-examples) for complete examples:
 
 - Email Summarizer
 - Web Researcher
@@ -115,7 +115,7 @@ See the [examples repository](https://github.com/aent-ai/aegis-examples) for com
 
 ```bash
 # Clone the repository
-git clone https://github.com/aent-ai/aegis-sdk-python
+git clone https://github.com/100monkeys-ai/aegis-sdk-python
 cd aegis-sdk-python
 
 # Create virtual environment
@@ -138,8 +138,8 @@ black aegis
 ## Documentation
 
 - [API Documentation](https://docs.100monkeys.ai/sdk/python)
-- [AEGIS Architecture](https://github.com/aent-ai/aegis-greenfield/blob/main/docs/ARCHITECTURE.md)
-- [Security Model](https://github.com/aent-ai/aegis-greenfield/blob/main/docs/SECURITY.md)
+- [AEGIS Architecture](https://github.com/100monkeys-ai/aegis-greenfield/blob/main/docs/ARCHITECTURE.md)
+- [Security Model](https://github.com/100monkeys-ai/aegis-greenfield/blob/main/docs/SECURITY.md)
 
 ## 📜 License
 
@@ -147,9 +147,9 @@ Business Source License 1.1 - See [LICENSE](LICENSE) for details.
 
 ## Related Repositories
 
-- [aegis-orchestrator](https://github.com/aent-ai/aegis-orchestrator) - Core runtime
-- [aegis-sdk-typescript](https://github.com/aent-ai/aegis-sdk-typescript) - TypeScript SDK
-- [aegis-examples](https://github.com/aent-ai/aegis-examples) - Example agents
+- [aegis-orchestrator](https://github.com/100monkeys-ai/aegis-orchestrator) - Core runtime
+- [aegis-sdk-typescript](https://github.com/100monkeys-ai/aegis-sdk-typescript) - TypeScript SDK
+- [aegis-examples](https://github.com/100monkeys-ai/aegis-examples) - Example agents
 
 ---
 

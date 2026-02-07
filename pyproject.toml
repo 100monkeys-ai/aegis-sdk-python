@@ -36,9 +36,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aent-ai/aegis-greenfield"
-Documentation = "https://github.com/aent-ai/aegis-greenfield"
-Repository = "https://github.com/aent-ai/aegis-greenfield"
+Homepage = "https://github.com/100monkeys-ai/aegis-greenfield"
+Documentation = "https://github.com/100monkeys-ai/aegis-greenfield"
+Repository = "https://github.com/100monkeys-ai/aegis-greenfield"
 
 [tool.setuptools.packages.find]
 where = ["."]
