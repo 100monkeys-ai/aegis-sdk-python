@@ -33,7 +33,7 @@ class AegisClient:
         Returns:
             Deployment response with agent ID
         """
-        response = await self.client.post("/api/v1/agents", json=manifest.model_dump())
+        response = await self.client.post("/v1/agents", json=manifest.model_dump())
         response.raise_for_status()
         return DeploymentResponse(**response.json())
 
@@ -48,7 +48,7 @@ class AegisClient:
             Task output with result and logs
         """
         response = await self.client.post(
-            f"/api/v1/agents/{agent_id}/execute",
+            f"/v1/agents/{agent_id}/execute",
             json=task_input.model_dump(),
         )
         response.raise_for_status()
@@ -63,7 +63,7 @@ class AegisClient:
         Returns:
             Agent status information
         """
-        response = await self.client.get(f"/api/v1/agents/{agent_id}/status")
+        response = await self.client.get(f"/v1/agents/{agent_id}/status")
         response.raise_for_status()
         return AgentStatus(**response.json())
 
@@ -73,7 +73,7 @@ class AegisClient:
         Args:
             agent_id: ID of the agent to terminate
         """
-        response = await self.client.delete(f"/api/v1/agents/{agent_id}")
+        response = await self.client.delete(f"/v1/agents/{agent_id}")
         response.raise_for_status()
 
     async def __aenter__(self):
