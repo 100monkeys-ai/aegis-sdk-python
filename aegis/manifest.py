@@ -102,7 +102,7 @@ class AgentManifest(BaseModel):
     """AEGIS agent manifest (K8s-style format, v1.0)."""
     
     apiVersion: str = Field("100monkeys.ai/v1", alias="apiVersion")
-    kind: str = Field("AgentManifest")
+    kind: str = Field("Agent")
     metadata: ManifestMetadata
     spec: AgentSpec
 
@@ -149,8 +149,8 @@ class AgentManifest(BaseModel):
             raise ValueError(f"Invalid apiVersion: expected '100monkeys.ai/v1', got '{self.apiVersion}'")
         
         # Validate kind
-        if self.kind != "AgentManifest":
-            raise ValueError(f"Invalid kind: expected 'AgentManifest', got '{self.kind}'")
+        if self.kind != "Agent":
+            raise ValueError(f"Invalid kind: expected 'Agent', got '{self.kind}'")
         
         # Validate name format (DNS label)
         name = self.metadata.name
