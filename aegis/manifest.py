@@ -84,6 +84,7 @@ class ExecutionStrategy(BaseModel):
     
     mode: str = Field("one-shot", description="Execution mode: one-shot | iterative")
     max_iterations: int = Field(10, description="Maximum refinement loops (for iterative mode)")
+    llm_timeout_seconds: int = Field(300, description="LLM timeout in seconds (default: 300)")
     validation: Optional[ValidationConfig] = Field(None, description="Acceptance criteria")
 
 
