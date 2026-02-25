@@ -36,8 +36,8 @@ We are committed to providing a welcoming and inclusive environment. By particip
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/100monkeys-ai/aegis-greenfield.git
-   cd aegis-greenfield
+   git clone https://github.com/100monkeys-ai/aegis-sdk-python.git
+   cd aegis-sdk-python
    ```
 
 2. **Build the Rust workspace**

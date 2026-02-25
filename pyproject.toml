@@ -36,9 +36,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/100monkeys-ai/aegis-greenfield"
-Documentation = "https://github.com/100monkeys-ai/aegis-greenfield"
-Repository = "https://github.com/100monkeys-ai/aegis-greenfield"
+Homepage = "https://100monkeys.ai"
+Documentation = "https://docs.100monkeys.ai"
+Repository = "https://github.com/100monkeys-ai/aegis-sdk-python"
 
 [tool.setuptools.packages.find]
 where = ["."]
