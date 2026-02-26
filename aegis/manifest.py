@@ -1,10 +1,28 @@
 """Agent manifest types and loading (K8s-style format)."""
 
+from enum import Enum
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+# ============================================================================
+# Enums
+# ============================================================================
+
+class ImagePullPolicy(str, Enum):
+    """Image pull policy strategy."""
+    
+    ALWAYS = "Always"
+    """Always pull from registry, even if cached locally."""
+    
+    IF_NOT_PRESENT = "IfNotPresent"
+    """Use local cache if available; pull only if missing (default)."""
+    
+    NEVER = "Never"
+    """Never pull; use only cached images (fail if missing)."""
 
 
 # ============================================================================
@@ -22,12 +40,50 @@ class ManifestMetadata(BaseModel):
 
 
 class RuntimeConfig(BaseModel):
-    """Runtime configuration."""
+    """Runtime configuration.
     
-    language: str = Field(..., description="Programming language (python, javascript, etc.)")
-    version: str = Field(..., description="Language version")
+    Supports two mutually exclusive modes:
+    - StandardRuntime: language + version (resolved to official Docker image)
+    - CustomRuntime: image (user-supplied fully-qualified container image)
+    
+    Validation ensures exactly one mode is specified (not both).
+    """
+    
+    language: Optional[str] = Field(None, description="Programming language (python, javascript, etc.)")
+    version: Optional[str] = Field(None, description="Language version")
+    image: Optional[str] = Field(None, description="Custom Docker image (fully-qualified: registry/repo:tag)")
+    image_pull_policy: ImagePullPolicy = Field(
+        ImagePullPolicy.IF_NOT_PRESENT,
+        description="Image pull policy (for custom runtimes)"
+    )
     isolation: str = Field("inherit", description="Isolation mode (inherit, firecracker, docker, process)")
-    autopull: bool = Field(True, description="Automatically pull runtime image")
+    model: str = Field("default", description="LLM model alias")
+    
+    @field_validator('language', 'version', 'image', mode='before')
+    @classmethod
+    def validate_runtime(cls, v):
+        """Validate that exactly one runtime mode is specified."""
+        return v
+    
+    def model_post_init__(self, __context):
+        """Validate mutual exclusion after model initialization."""
+        has_standard = self.language is not None and self.version is not None
+        has_language_only = self.language is not None and self.version is None
+        has_version_only = self.version is not None and self.language is None
+        has_custom = self.image is not None
+        
+        if has_language_only:
+            raise ValueError("language requires version to be specified")
+        if has_version_only:
+            raise ValueError("version requires language to be specified")
+        if has_standard and has_custom:
+            raise ValueError("cannot specify both image and language+version (mutually exclusive)")
+        if not has_standard and not has_custom:
+            raise ValueError("must specify either standard runtime (language+version) or custom runtime (image)")
+        
+        if has_custom and self.image:
+            if '/' not in self.image:
+                raise ValueError("image must be fully-qualified: registry/repo:tag (e.g., ghcr.io/org/image:v1.0)")
 
 
 class TaskConfig(BaseModel):
@@ -88,6 +144,18 @@ class ExecutionStrategy(BaseModel):
     validation: Optional[ValidationConfig] = Field(None, description="Acceptance criteria")
 
 
+class AdvancedConfig(BaseModel):
+    """Advanced configuration options."""
+    
+    warm_pool_size: int = Field(0, description="Number of pre-warmed container instances")
+    swarm_enabled: bool = Field(False, description="Enable multi-agent coordination")
+    startup_script: Optional[str] = Field(None, description="Custom startup script")
+    bootstrap_path: Optional[str] = Field(
+        None,
+        description="Custom bootstrap script path (for CustomRuntime only)"
+    )
+
+
 class AgentSpec(BaseModel):
     """Agent specification."""
     
@@ -97,6 +165,7 @@ class AgentSpec(BaseModel):
     security: Optional[SecurityConfig] = None
     tools: List[str] = Field(default_factory=list, description="MCP tools")
     env: Dict[str, str] = Field(default_factory=dict, description="Environment variables")
+    advanced: Optional[AdvancedConfig] = None
 
 
 class AgentManifest(BaseModel):
@@ -166,15 +235,27 @@ class AgentManifest(BaseModel):
 # ============================================================================
 
 class AgentManifestBuilder:
-    """Fluent builder for AgentManifest."""
+    """Fluent builder for AgentManifest.
     
-    def __init__(self, name: str, language: str, version: str):
-        """Initialize builder with required fields.
+    Supports both standard and custom runtimes:
+    - Standard: AgentManifestBuilder("name", language="python", version="3.11")
+    - Custom: AgentManifestBuilder("name", image="ghcr.io/org/agent:v1.0")
+    """
+    
+    def __init__(
+        self,
+        name: str,
+        language: Optional[str] = None,
+        version: Optional[str] = None,
+        image: Optional[str] = None,
+    ):
+        """Initialize builder.
         
         Args:
             name: Agent name (DNS label format)
-            language: Programming language (python, javascript, etc.)
-            version: Language version (e.g., "3.11", "20")
+            language: Programming language (for standard runtime)
+            version: Language version (for standard runtime)
+            image: Custom container image (for custom runtime)
         """
         self.manifest = AgentManifest(
             metadata=ManifestMetadata(
@@ -184,7 +265,8 @@ class AgentManifestBuilder:
             spec=AgentSpec(
                 runtime=RuntimeConfig(
                     language=language,
-                    version=version
+                    version=version,
+                    image=image,
                 )
             )
         )
@@ -219,6 +301,18 @@ class AgentManifestBuilder:
             self.manifest.spec.execution = ExecutionStrategy()
         self.manifest.spec.execution.mode = mode
         self.manifest.spec.execution.max_iterations = max_iterations
+        return self
+    
+    def with_image_pull_policy(self, policy: ImagePullPolicy) -> "AgentManifestBuilder":
+        """Set image pull policy (for custom runtimes)."""
+        self.manifest.spec.runtime.image_pull_policy = policy
+        return self
+    
+    def with_bootstrap_path(self, path: str) -> "AgentManifestBuilder":
+        """Set custom bootstrap script path (for custom runtimes)."""
+        if not self.manifest.spec.advanced:
+            self.manifest.spec.advanced = AdvancedConfig()
+        self.manifest.spec.advanced.bootstrap_path = path
         return self
     
     def with_network_allow(self, domains: List[str]) -> "AgentManifestBuilder":
