@@ -2,7 +2,7 @@
 
 Official Python SDK for building secure, autonomous agents with the AEGIS runtime.
 
-[![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL%203.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyPI](https://img.shields.io/pypi/v/aegis-sdk)](https://pypi.org/project/aegis-sdk/)
 
@@ -141,7 +141,7 @@ black aegis
 
 ## 📜 License
 
-Business Source License 1.1 - See [LICENSE](LICENSE) for details.
+GNU Affero General Public License v3.0 - See [LICENSE](LICENSE) for details.
 
 ## Related Repositories
 
