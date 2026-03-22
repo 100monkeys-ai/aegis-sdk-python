@@ -33,8 +33,8 @@ class ManifestMetadata(BaseModel):
     """Kubernetes-style metadata."""
     
     name: str = Field(..., description="Unique agent name (DNS label format)")
-    version: str = Field(..., description="Manifest schema version (semantic versioning)")
-    description: Optional[str] = Field(None, description="Human-readable description")
+    version: str = Field(default="1.0.0", description="Manifest schema version (semantic versioning)")
+    description: Optional[str] = Field(default=None, description="Human-readable description")
     labels: Dict[str, str] = Field(default_factory=dict, description="Key-value labels for categorization")
     annotations: Dict[str, str] = Field(default_factory=dict, description="Non-identifying metadata")
 
@@ -49,23 +49,23 @@ class RuntimeConfig(BaseModel):
     Validation ensures exactly one mode is specified (not both).
     """
     
-    language: Optional[str] = Field(None, description="Programming language (python, javascript, etc.)")
-    version: Optional[str] = Field(None, description="Language version")
-    image: Optional[str] = Field(None, description="Custom Docker image (fully-qualified: registry/repo:tag)")
+    language: Optional[str] = Field(default=None, description="Programming language (python, javascript, etc.)")
+    version: Optional[str] = Field(default=None, description="Language version")
+    image: Optional[str] = Field(default=None, description="Custom Docker image (fully-qualified: registry/repo:tag)")
     image_pull_policy: ImagePullPolicy = Field(
-        ImagePullPolicy.IF_NOT_PRESENT,
+        default=ImagePullPolicy.IF_NOT_PRESENT,
         description="Image pull policy (for custom runtimes)"
     )
-    isolation: str = Field("inherit", description="Isolation mode (inherit, firecracker, docker, process)")
-    model: str = Field("default", description="LLM model alias")
+    isolation: str = Field(default="inherit", description="Isolation mode (inherit, firecracker, docker, process)")
+    model: str = Field(default="default", description="LLM model alias")
     
     @field_validator('language', 'version', 'image', mode='before')
     @classmethod
-    def validate_runtime(cls, v):
+    def validate_runtime(cls, v: Any) -> Any:
         """Validate that exactly one runtime mode is specified."""
         return v
     
-    def model_post_init__(self, __context):
+    def model_post_init__(self, __context: Any) -> None:
         """Validate mutual exclusion after model initialization."""
         has_standard = self.language is not None and self.version is not None
         has_language_only = self.language is not None and self.version is None
@@ -90,15 +90,15 @@ class TaskConfig(BaseModel):
     """Task definition."""
     
     agentskills: List[str] = Field(default_factory=list, description="Pre-built instruction packages")
-    instruction: Optional[str] = Field(None, description="Steering instructions")
-    prompt_template: Optional[str] = Field(None, description="Custom LLM prompt template")
-    input_data: Optional[Dict[str, Any]] = Field(None, description="Structured input parameters")
+    instruction: Optional[str] = Field(default=None, description="Steering instructions")
+    prompt_template: Optional[str] = Field(default=None, description="Custom LLM prompt template")
+    input_data: Optional[Dict[str, Any]] = Field(default=None, description="Structured input parameters")
 
 
 class NetworkPolicy(BaseModel):
     """Network access policy."""
     
-    mode: str = Field("allow", description="Policy mode: allow (allowlist) | deny (denylist) | none")
+    mode: str = Field(default="allow", description="Policy mode: allow (allowlist) | deny (denylist) | none")
     allowlist: List[str] = Field(default_factory=list, description="Allowed domains/IPs")
     denylist: List[str] = Field(default_factory=list, description="Denied domains/IPs")
 
@@ -108,24 +108,24 @@ class FilesystemPolicy(BaseModel):
     
     read: List[str] = Field(default_factory=list, description="Readable paths")
     write: List[str] = Field(default_factory=list, description="Writable paths")
-    read_only: bool = Field(False, description="Read-only mode")
+    read_only: bool = Field(default=False, description="Read-only mode")
 
 
 class ResourceLimits(BaseModel):
     """Resource limits."""
     
-    cpu: int = Field(1000, description="CPU quota in millicores (1000 = 1 CPU core)")
-    memory: str = Field("512Mi", description="Memory limit (human-readable)")
-    disk: str = Field("1Gi", description="Disk space limit")
-    timeout: Optional[str] = Field(None, description="Execution timeout")
+    cpu: int = Field(default=1000, description="CPU quota in millicores (1000 = 1 CPU core)")
+    memory: str = Field(default="512Mi", description="Memory limit (human-readable)")
+    disk: str = Field(default="1Gi", description="Disk space limit")
+    timeout: Optional[str] = Field(default=None, description="Execution timeout")
 
 
 class SecurityConfig(BaseModel):
     """Security configuration."""
     
-    network: NetworkPolicy = Field(default_factory=NetworkPolicy)
-    filesystem: FilesystemPolicy = Field(default_factory=FilesystemPolicy)
-    resources: ResourceLimits = Field(default_factory=ResourceLimits)
+    network: NetworkPolicy = Field(default_factory=lambda: NetworkPolicy())
+    filesystem: FilesystemPolicy = Field(default_factory=lambda: FilesystemPolicy())
+    resources: ResourceLimits = Field(default_factory=lambda: ResourceLimits())
 
 
 class ValidationConfig(BaseModel):
@@ -138,20 +138,20 @@ class ValidationConfig(BaseModel):
 class ExecutionStrategy(BaseModel):
     """Execution strategy."""
     
-    mode: str = Field("one-shot", description="Execution mode: one-shot | iterative")
-    max_iterations: int = Field(10, description="Maximum refinement loops (for iterative mode)")
-    llm_timeout_seconds: int = Field(300, description="LLM timeout in seconds (default: 300)")
-    validation: Optional[ValidationConfig] = Field(None, description="Acceptance criteria")
+    mode: str = Field(default="one-shot", description="Execution mode: one-shot | iterative")
+    max_iterations: int = Field(default=10, description="Maximum refinement loops (for iterative mode)")
+    llm_timeout_seconds: int = Field(default=300, description="LLM timeout in seconds (default: 300)")
+    validation: Optional[ValidationConfig] = Field(default=None, description="Acceptance criteria")
 
 
 class AdvancedConfig(BaseModel):
     """Advanced configuration options."""
     
-    warm_pool_size: int = Field(0, description="Number of pre-warmed container instances")
-    swarm_enabled: bool = Field(False, description="Enable multi-agent coordination")
-    startup_script: Optional[str] = Field(None, description="Custom startup script")
+    warm_pool_size: int = Field(default=0, description="Number of pre-warmed container instances")
+    swarm_enabled: bool = Field(default=False, description="Enable multi-agent coordination")
+    startup_script: Optional[str] = Field(default=None, description="Custom startup script")
     bootstrap_path: Optional[str] = Field(
-        None,
+        default=None,
         description="Custom bootstrap script path (for CustomRuntime only)"
     )
 
@@ -160,19 +160,19 @@ class AgentSpec(BaseModel):
     """Agent specification."""
     
     runtime: RuntimeConfig
-    task: Optional[TaskConfig] = None
-    execution: Optional[ExecutionStrategy] = None
-    security: Optional[SecurityConfig] = None
+    task: Optional[TaskConfig] = Field(default=None)
+    execution: Optional[ExecutionStrategy] = Field(default=None)
+    security: Optional[SecurityConfig] = Field(default=None)
     tools: List[str] = Field(default_factory=list, description="MCP tools")
     env: Dict[str, str] = Field(default_factory=dict, description="Environment variables")
-    advanced: Optional[AdvancedConfig] = None
+    advanced: Optional[AdvancedConfig] = Field(default=None)
 
 
 class AgentManifest(BaseModel):
     """AEGIS agent manifest (K8s-style format, v1.0)."""
     
-    apiVersion: str = Field("100monkeys.ai/v1", alias="apiVersion")
-    kind: str = Field("Agent")
+    apiVersion: str = Field(default="100monkeys.ai/v1", alias="apiVersion")
+    kind: str = Field(default="Agent")
     metadata: ManifestMetadata
     spec: AgentSpec
 
