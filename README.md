@@ -72,7 +72,6 @@ tools:
 env:
   OPENAI_API_KEY: "secret:openai-key"
 ```
-
 ## API Reference
 
 ### AegisClient
@@ -80,22 +79,54 @@ env:
 ```python
 class AegisClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None)
-    async def deploy_agent(self, manifest: AgentManifest) -> DeploymentResponse
-    async def execute_task(self, agent_id: str, task_input: TaskInput) -> TaskOutput
-    async def get_agent_status(self, agent_id: str) -> AgentStatus
-    async def terminate_agent(self, agent_id: str) -> None
+
+    # Agent Management
+    async def deploy_agent(self, manifest: AgentManifest, force: bool = False) -> DeploymentResponse
+    async def list_agents(self) -> list[AgentInfo]
+    async def get_agent(self, agent_id: str) -> AgentManifest
+    async def lookup_agent(self, name: str) -> Optional[str]
+    async def delete_agent(self, agent_id: str) -> None
+    async def stream_agent_events(self, agent_id: str, follow: bool = True) -> AsyncGenerator[str, None]
+
+    # Execution Management
+    async def execute_task(self, agent_id: str, input: TaskInput) -> dict[str, Any]
+    async def get_execution(self, execution_id: str) -> ExecutionInfo
+    async def cancel_execution(self, execution_id: str) -> dict[str, Any]
+    async def list_executions(self, agent_id: Optional[str] = None, limit: Optional[int] = None) -> list[ExecutionInfo]
+    async def delete_execution(self, execution_id: str) -> dict[str, Any]
+    async def stream_execution_events(self, execution_id: str, follow: bool = True) -> AsyncGenerator[str, None]
+
+    # Workflow Management
+    async def register_workflow(self, manifest: str | dict[str, Any], force: bool = False) -> dict[str, Any]
+    async def list_workflows(self) -> list[WorkflowInfo]
+    async def get_workflow(self, name: str) -> str
+    async def delete_workflow(self, name: str) -> dict[str, Any]
+    async def run_workflow(self, name: str, input: dict[str, Any]) -> WorkflowExecutionInfo
+    async def execute_temporal_workflow(self, request: StartWorkflowExecutionRequest) -> WorkflowExecutionInfo
+    async def list_workflow_executions(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[WorkflowExecutionInfo]
+    async def get_workflow_execution(self, execution_id: str) -> WorkflowExecutionInfo
+    async def stream_workflow_logs(self, execution_id: str) -> AsyncGenerator[str, None]
+    async def signal_workflow_execution(self, execution_id: str, response: str) -> dict[str, Any]
+
+    # Platform Services
+    async def list_pending_approvals(self) -> dict[str, Any]
+    async def get_pending_approval(self, approval_id: str) -> dict[str, Any]
+    async def approve_request(self, approval_id: str, request: Optional[ApprovalRequest] = None) -> dict[str, Any]
+    async def reject_request(self, approval_id: str, request: RejectionRequest) -> dict[str, Any]
+    async def dispatch_gateway(self, payload: dict[str, Any]) -> dict[str, Any]
+    async def attest_smcp(self, request: AttestationRequest) -> dict[str, Any]
+    async def invoke_smcp(self, envelope: SmcpEnvelope) -> dict[str, Any]
 ```
 
 ### AgentManifest
 
 ```python
 class AgentManifest:
-    version: str
-    agent: AgentSpec
-    permissions: Permissions
-    tools: list[str]
-    env: dict[str, str]
-    
+    apiVersion: str
+    kind: str
+    metadata: ManifestMetadata
+    spec: AgentSpec
+
     @classmethod
     def from_yaml_file(cls, path: str | Path) -> "AgentManifest"
     def to_yaml_file(self, path: str | Path) -> None
@@ -119,20 +150,20 @@ git clone https://github.com/100monkeys-ai/aegis-sdk-python
 cd aegis-sdk-python
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+python -m venv .venv
+source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
 
 # Install dependencies
 pip install -e ".[dev]"
 
-# Run tests
+# Run full CI pipeline (lint, type-check, test, build)
+./scripts/ci.sh
+
+# Run individual tasks
 pytest
-
-# Type checking
 mypy aegis
-
-# Formatting
 black aegis
+ruff check aegis
 ```
 
 ## Documentation

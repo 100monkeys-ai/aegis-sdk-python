@@ -8,7 +8,6 @@ import httpx
 from .manifest import AgentManifest
 from .types import (
     DeploymentResponse,
-    TaskInput,
     TaskResponse,
     AgentInfo,
     ExecutionInfo,
@@ -41,7 +40,9 @@ class AegisClient:
 
     # --- Agent Management ---
 
-    async def deploy_agent(self, manifest: AgentManifest, force: bool = False) -> DeploymentResponse:
+    async def deploy_agent(
+        self, manifest: AgentManifest, force: bool = False
+    ) -> DeploymentResponse:
         """Deploy an agent to the AEGIS orchestrator.
 
         Args:
@@ -53,9 +54,7 @@ class AegisClient:
         """
         params = {"force": "true"} if force else {}
         response = await self.client.post(
-            "/v1/agents",
-            json=manifest.model_dump(by_alias=True),
-            params=params
+            "/v1/agents", json=manifest.model_dump(by_alias=True), params=params
         )
         response.raise_for_status()
         return DeploymentResponse(**response.json())
@@ -107,7 +106,9 @@ class AegisClient:
         response = await self.client.delete(f"/v1/agents/{agent_id}")
         response.raise_for_status()
 
-    async def stream_agent_events(self, agent_id: str, follow: bool = False) -> AsyncGenerator[ExecutionEvent, None]:
+    async def stream_agent_events(
+        self, agent_id: str, follow: bool = False
+    ) -> AsyncGenerator[ExecutionEvent, None]:
         """Stream events for all executions of an agent.
 
         Args:
@@ -118,11 +119,13 @@ class AegisClient:
             Execution events
         """
         params = {"follow": "true" if follow else "false"}
-        async with self.client.stream("GET", f"/v1/agents/{agent_id}/events", params=params) as response:
+        async with self.client.stream(
+            "GET", f"/v1/agents/{agent_id}/events", params=params
+        ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data:"):
-                    data = line[len("data:"):].strip()
+                    data = line[len("data:") :].strip()
                     if data:
                         yield ExecutionEvent(**json.loads(data))
 
@@ -173,7 +176,9 @@ class AegisClient:
         response = await self.client.post(f"/v1/executions/{execution_id}/cancel")
         response.raise_for_status()
 
-    async def stream_execution_events(self, execution_id: str, follow: bool = True) -> AsyncGenerator[ExecutionEvent, None]:
+    async def stream_execution_events(
+        self, execution_id: str, follow: bool = True
+    ) -> AsyncGenerator[ExecutionEvent, None]:
         """Stream events for a specific execution.
 
         Args:
@@ -184,15 +189,19 @@ class AegisClient:
             Execution events
         """
         params = {"follow": "true" if follow else "false"}
-        async with self.client.stream("GET", f"/v1/executions/{execution_id}/events", params=params) as response:
+        async with self.client.stream(
+            "GET", f"/v1/executions/{execution_id}/events", params=params
+        ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data:"):
-                    data = line[len("data:"):].strip()
+                    data = line[len("data:") :].strip()
                     if data:
                         yield ExecutionEvent(**json.loads(data))
 
-    async def list_executions(self, agent_id: Optional[str] = None, limit: int = 20) -> List[ExecutionInfo]:
+    async def list_executions(
+        self, agent_id: Optional[str] = None, limit: int = 20
+    ) -> List[ExecutionInfo]:
         """List recent executions.
 
         Args:
@@ -207,7 +216,7 @@ class AegisClient:
             params["agent_id"] = agent_id
         if limit:
             params["limit"] = str(limit)
-            
+
         response = await self.client.get("/v1/executions", params=params)
         response.raise_for_status()
         return [ExecutionInfo(**exec_data) for exec_data in response.json()]
@@ -303,7 +312,9 @@ class AegisClient:
         response.raise_for_status()
         return TaskResponse(**response.json())
 
-    async def list_workflow_executions(self, limit: int = 20, offset: int = 0) -> List[WorkflowExecutionInfo]:
+    async def list_workflow_executions(
+        self, limit: int = 20, offset: int = 0
+    ) -> List[WorkflowExecutionInfo]:
         """List workflow executions.
 
         Args:
@@ -386,7 +397,9 @@ class AegisClient:
         data = response.json()
         return PendingApproval(id=approval_id, request=data.get("request"))
 
-    async def approve_request(self, approval_id: str, feedback: Optional[str] = None, approved_by: Optional[str] = None) -> None:
+    async def approve_request(
+        self, approval_id: str, feedback: Optional[str] = None, approved_by: Optional[str] = None
+    ) -> None:
         """Approve a pending human request.
 
         Args:
@@ -399,11 +412,15 @@ class AegisClient:
             payload["feedback"] = feedback
         if approved_by:
             payload["approved_by"] = approved_by
-            
-        response = await self.client.post(f"/v1/human-approvals/{approval_id}/approve", json=payload)
+
+        response = await self.client.post(
+            f"/v1/human-approvals/{approval_id}/approve", json=payload
+        )
         response.raise_for_status()
 
-    async def reject_request(self, approval_id: str, reason: str, rejected_by: Optional[str] = None) -> None:
+    async def reject_request(
+        self, approval_id: str, reason: str, rejected_by: Optional[str] = None
+    ) -> None:
         """Reject a pending human request.
 
         Args:
@@ -414,7 +431,7 @@ class AegisClient:
         payload = {"reason": reason}
         if rejected_by:
             payload["rejected_by"] = rejected_by
-            
+
         response = await self.client.post(f"/v1/human-approvals/{approval_id}/reject", json=payload)
         response.raise_for_status()
 
