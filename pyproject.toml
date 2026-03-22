@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aegis-sdk"
-version = "0.14.0-pre-alpha"
+version = "0.14.0a0"
 description = "Python SDK for building AEGIS agents"
 readme = "README.md"
 license = { text = "AGPL-3.0" }
