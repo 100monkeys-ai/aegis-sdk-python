@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aegis-sdk"
-version = "0.1.0"
+version = "0.14.0-pre-alpha"
 description = "Python SDK for building AEGIS agents"
 readme = "README.md"
 license = { text = "AGPL-3.0" }
@@ -15,7 +15,7 @@ keywords = ["aegis", "ai", "agents", "autonomous", "mcp"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 (AGPLv3)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
 ]
