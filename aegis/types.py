@@ -39,6 +39,9 @@ class AgentInfo(BaseModel):
     version: str
     description: str
     status: str
+    # Tenant slug owning this agent (ADR-056). Present in API responses;
+    # tenancy is derived from the caller's JWT — no client-side parameter needed.
+    tenant_id: Optional[str] = None
 
 
 class ExecutionInfo(BaseModel):
@@ -49,6 +52,8 @@ class ExecutionInfo(BaseModel):
     status: str
     started_at: Optional[str] = None
     ended_at: Optional[str] = None
+    # Tenant slug owning this execution (ADR-056).
+    tenant_id: Optional[str] = None
 
 
 class ExecutionEvent(BaseModel):
@@ -80,6 +85,8 @@ class WorkflowExecutionInfo(BaseModel):
     current_state: str
     started_at: str
     last_transition_at: str
+    # Tenant slug owning this workflow execution (ADR-056).
+    tenant_id: Optional[str] = None
 
 
 class PendingApproval(BaseModel):
