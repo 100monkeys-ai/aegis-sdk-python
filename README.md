@@ -72,6 +72,7 @@ tools:
 env:
   OPENAI_API_KEY: "secret:openai-key"
 ```
+
 ## API Reference
 
 ### AegisClient
