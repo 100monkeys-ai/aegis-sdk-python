@@ -106,9 +106,6 @@ class RuntimeConfig(BaseModel):
 class TaskConfig(BaseModel):
     """Task definition."""
 
-    agentskills: List[str] = Field(
-        default_factory=list, description="Pre-built instruction packages"
-    )
     instruction: Optional[str] = Field(default=None, description="Steering instructions")
     prompt_template: Optional[str] = Field(default=None, description="Custom LLM prompt template")
     input_data: Optional[Dict[str, Any]] = Field(
@@ -314,13 +311,6 @@ class AgentManifestBuilder:
         if not self.manifest.spec.task:
             self.manifest.spec.task = TaskConfig()
         self.manifest.spec.task.instruction = instruction
-        return self
-
-    def with_agentskill(self, skill: str) -> "AgentManifestBuilder":
-        """Add an AgentSkill."""
-        if not self.manifest.spec.task:
-            self.manifest.spec.task = TaskConfig()
-        self.manifest.spec.task.agentskills.append(skill)
         return self
 
     def with_execution_mode(self, mode: str, max_iterations: int = 10) -> "AgentManifestBuilder":
