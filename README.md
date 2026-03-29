@@ -88,6 +88,7 @@ class AegisClient:
     async def lookup_agent(self, name: str) -> Optional[str]
     async def delete_agent(self, agent_id: str) -> None
     async def stream_agent_events(self, agent_id: str, follow: bool = True) -> AsyncGenerator[str, None]
+    async def get_agent_logs(self, agent_id: str, limit: int = 50, offset: int = 0) -> dict
 
     # Execution Management
     async def execute_task(self, agent_id: str, input: TaskInput) -> dict[str, Any]
@@ -108,6 +109,8 @@ class AegisClient:
     async def get_workflow_execution(self, execution_id: str) -> WorkflowExecutionInfo
     async def stream_workflow_logs(self, execution_id: str) -> AsyncGenerator[str, None]
     async def signal_workflow_execution(self, execution_id: str, response: str) -> dict[str, Any]
+    async def cancel_workflow_execution(self, execution_id: str) -> None
+    async def remove_workflow_execution(self, execution_id: str) -> None
 
     # Platform Services
     async def list_pending_approvals(self) -> dict[str, Any]

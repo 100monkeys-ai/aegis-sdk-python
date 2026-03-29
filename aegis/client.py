@@ -106,6 +106,26 @@ class AegisClient:
         response = await self.client.delete(f"/v1/agents/{agent_id}")
         response.raise_for_status()
 
+    async def get_agent_logs(
+        self, agent_id: str, limit: int = 50, offset: int = 0
+    ) -> dict:
+        """Retrieve agent-level activity logs.
+
+        Args:
+            agent_id: UUID of the agent.
+            limit: Maximum number of events to return (default 50).
+            offset: Zero-based starting offset (default 0).
+
+        Returns:
+            Dictionary containing agent activity events.
+        """
+        response = await self.client.get(
+            f"/v1/agents/{agent_id}/logs",
+            params={"limit": limit, "offset": offset},
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def stream_agent_events(
         self, agent_id: str, follow: bool = False
     ) -> AsyncGenerator[ExecutionEvent, None]:
@@ -365,6 +385,20 @@ class AegisClient:
         response = await self.client.post(
             f"/v1/workflows/executions/{execution_id}/signal",
             json={"response": response_text},
+        )
+        response.raise_for_status()
+
+    async def cancel_workflow_execution(self, execution_id: str) -> None:
+        """Cancel a running workflow execution."""
+        response = await self.client.post(
+            f"/v1/workflows/executions/{execution_id}/cancel"
+        )
+        response.raise_for_status()
+
+    async def remove_workflow_execution(self, execution_id: str) -> None:
+        """Remove a workflow execution record."""
+        response = await self.client.delete(
+            f"/v1/workflows/executions/{execution_id}"
         )
         response.raise_for_status()
 
