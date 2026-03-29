@@ -16,26 +16,21 @@ pip install aegis-sdk
 
 ```python
 import asyncio
-from aegis import AegisClient, AgentManifest, TaskInput
+from aegis import AegisClient
 
 async def main():
     # Create a client
     async with AegisClient("https://api.100monkeys.ai", api_key="your-api-key") as client:
-        # Load agent manifest
-        manifest = AgentManifest.from_yaml_file("agent.yaml")
-        
-        # Deploy the agent
-        deployment = await client.deploy_agent(manifest)
-        print(f"Agent deployed: {deployment.agent_id}")
-        
-        # Execute a task
-        task_input = TaskInput(
-            prompt="Summarize my emails from today",
-            context={}
+        # Start an execution
+        result = await client.start_execution(
+            agent_id="my-agent-id",
+            input="Summarize my emails from today",
         )
-        
-        output = await client.execute_task(deployment.agent_id, task_input)
-        print(f"Result: {output.result}")
+        print(f"Execution started: {result.execution_id}")
+
+        # Stream execution events
+        async for event in client.stream_execution(result.execution_id):
+            print(f"[{event.event_type}] {event.data}")
 
 asyncio.run(main())
 ```
@@ -80,46 +75,49 @@ env:
 ```python
 class AegisClient:
     def __init__(self, base_url: str, api_key: Optional[str] = None)
+    async def aclose(self) -> None
 
-    # Agent Management
-    async def deploy_agent(self, manifest: AgentManifest, force: bool = False) -> DeploymentResponse
-    async def list_agents(self) -> list[AgentInfo]
-    async def get_agent(self, agent_id: str) -> AgentManifest
-    async def lookup_agent(self, name: str) -> Optional[str]
-    async def delete_agent(self, agent_id: str) -> None
-    async def stream_agent_events(self, agent_id: str, follow: bool = True) -> AsyncGenerator[str, None]
-    async def get_agent_logs(self, agent_id: str, limit: int = 50, offset: int = 0) -> dict
+    # Execution
+    async def start_execution(self, agent_id: str, input: str, context_overrides: Optional[Any] = None) -> StartExecutionResponse
+    async def stream_execution(self, execution_id: str, token: Optional[str] = None) -> AsyncGenerator[ExecutionEvent, None]
 
-    # Execution Management
-    async def execute_task(self, agent_id: str, input: TaskInput) -> dict[str, Any]
-    async def get_execution(self, execution_id: str) -> ExecutionInfo
-    async def cancel_execution(self, execution_id: str) -> dict[str, Any]
-    async def list_executions(self, agent_id: Optional[str] = None, limit: Optional[int] = None) -> list[ExecutionInfo]
-    async def delete_execution(self, execution_id: str) -> dict[str, Any]
-    async def stream_execution_events(self, execution_id: str, follow: bool = True) -> AsyncGenerator[str, None]
+    # Human Approvals
+    async def list_pending_approvals(self) -> List[PendingApproval]
+    async def get_pending_approval(self, approval_id: str) -> PendingApproval
+    async def approve_request(self, approval_id: str, feedback: Optional[str] = None, approved_by: Optional[str] = None) -> ApprovalResponse
+    async def reject_request(self, approval_id: str, reason: str, rejected_by: Optional[str] = None) -> ApprovalResponse
 
-    # Workflow Management
-    async def register_workflow(self, manifest: str | dict[str, Any], force: bool = False) -> dict[str, Any]
-    async def list_workflows(self) -> list[WorkflowInfo]
-    async def get_workflow(self, name: str) -> str
-    async def delete_workflow(self, name: str) -> dict[str, Any]
-    async def run_workflow(self, name: str, input: dict[str, Any]) -> WorkflowExecutionInfo
-    async def execute_temporal_workflow(self, request: StartWorkflowExecutionRequest) -> WorkflowExecutionInfo
-    async def list_workflow_executions(self, limit: Optional[int] = None, offset: Optional[int] = None) -> list[WorkflowExecutionInfo]
-    async def get_workflow_execution(self, execution_id: str) -> WorkflowExecutionInfo
-    async def stream_workflow_logs(self, execution_id: str) -> AsyncGenerator[str, None]
-    async def signal_workflow_execution(self, execution_id: str, response: str) -> dict[str, Any]
-    async def cancel_workflow_execution(self, execution_id: str) -> None
-    async def remove_workflow_execution(self, execution_id: str) -> None
+    # SMCP
+    async def attest_smcp(self, payload: Dict[str, Any]) -> SmcpAttestationResponse
+    async def invoke_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]
+    async def list_smcp_tools(self, security_context: Optional[str] = None) -> SmcpToolsResponse
 
-    # Platform Services
-    async def list_pending_approvals(self) -> dict[str, Any]
-    async def get_pending_approval(self, approval_id: str) -> dict[str, Any]
-    async def approve_request(self, approval_id: str, request: Optional[ApprovalRequest] = None) -> dict[str, Any]
-    async def reject_request(self, approval_id: str, request: RejectionRequest) -> dict[str, Any]
-    async def dispatch_gateway(self, payload: dict[str, Any]) -> dict[str, Any]
-    async def attest_smcp(self, request: AttestationRequest) -> dict[str, Any]
-    async def invoke_smcp(self, envelope: SmcpEnvelope) -> dict[str, Any]
+    # Dispatch Gateway
+    async def dispatch_gateway(self, payload: Dict[str, Any]) -> Dict[str, Any]
+
+    # Stimulus
+    async def ingest_stimulus(self, payload: Dict[str, Any]) -> Dict[str, Any]
+    async def send_webhook(self, source: str, payload: Dict[str, Any]) -> Dict[str, Any]
+
+    # Workflow Logs
+    async def get_workflow_execution_logs(self, execution_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> WorkflowExecutionLogs
+    async def stream_workflow_execution_logs(self, execution_id: str) -> AsyncGenerator[ExecutionEvent, None]
+
+    # Admin: Tenant Management
+    async def create_tenant(self, slug: str, display_name: str, tier: str = "enterprise") -> Tenant
+    async def list_tenants(self) -> List[Tenant]
+    async def suspend_tenant(self, slug: str) -> Dict[str, str]
+    async def delete_tenant(self, slug: str) -> Dict[str, str]
+
+    # Admin: Rate Limits
+    async def list_rate_limit_overrides(self, tenant_id: Optional[str] = None, user_id: Optional[str] = None) -> List[RateLimitOverride]
+    async def create_rate_limit_override(self, payload: Dict[str, Any]) -> RateLimitOverride
+    async def delete_rate_limit_override(self, override_id: str) -> Dict[str, str]
+    async def get_rate_limit_usage(self, scope_type: str, scope_id: str) -> List[UsageRecord]
+
+    # Health
+    async def health_live(self) -> Dict[str, str]
+    async def health_ready(self) -> Dict[str, str]
 ```
 
 ### AgentManifest
@@ -172,9 +170,9 @@ ruff check aegis
 
 ## Documentation
 
-- [API Documentation](https://docs.100monkeys.ai/sdk/python)
+- [API Documentation](https://docs.100monkeys.ai/docs/reference/sdk-python)
 
-## 📜 License
+## License
 
 GNU Affero General Public License v3.0 - See [LICENSE](LICENSE) for details.
 
