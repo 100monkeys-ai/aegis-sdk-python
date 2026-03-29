@@ -14,37 +14,49 @@ from .bootstrap import (
 from .client import AegisClient
 from .manifest import AgentManifest
 from .types import (
-    AgentInfo,
-    AgentState,
-    DeploymentResponse,
+    ApprovalResponse,
+    CreateRateLimitOverrideRequest,
+    CreateTenantRequest,
     ExecutionEvent,
-    ExecutionInfo,
-    ExecutionStatus,
     PendingApproval,
-    TaskInput,
-    TaskResponse,
-    WorkflowExecutionInfo,
-    WorkflowInfo,
+    RateLimitOverride,
+    SmcpAttestationRequest,
+    SmcpAttestationResponse,
+    SmcpToolInvokeRequest,
+    SmcpToolsResponse,
+    StartExecutionRequest,
+    StartExecutionResponse,
+    Tenant,
+    TenantQuotas,
+    UsageRecord,
+    WorkflowExecutionLogs,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.15.0a0"
 
 __all__ = [
     # Control-plane client
     "AegisClient",
     "AgentManifest",
-    "AgentState",
-    "ExecutionStatus",
-    "AgentInfo",
-    "ExecutionInfo",
+    # Request/Response types
+    "StartExecutionRequest",
+    "StartExecutionResponse",
     "ExecutionEvent",
-    "WorkflowInfo",
-    "WorkflowExecutionInfo",
     "PendingApproval",
-    "TaskInput",
-    "TaskResponse",
-    "DeploymentResponse",
-    # Dispatch Protocol wire types (ADR-040) — for custom bootstrap script authors
+    "ApprovalResponse",
+    "SmcpAttestationRequest",
+    "SmcpAttestationResponse",
+    "SmcpToolInvokeRequest",
+    "SmcpToolsResponse",
+    "WorkflowExecutionLogs",
+    # Admin types
+    "CreateTenantRequest",
+    "Tenant",
+    "TenantQuotas",
+    "CreateRateLimitOverrideRequest",
+    "RateLimitOverride",
+    "UsageRecord",
+    # Dispatch Protocol wire types (ADR-040)
     "AgentMessage",
     "OrchestratorMessage",
     "GenerateMessage",

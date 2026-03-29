@@ -5,16 +5,17 @@ from typing import Any, Optional, List, AsyncGenerator, Dict, cast, Type
 
 import httpx
 
-from .manifest import AgentManifest
 from .types import (
-    DeploymentResponse,
-    TaskResponse,
-    AgentInfo,
-    ExecutionInfo,
+    StartExecutionResponse,
     ExecutionEvent,
-    WorkflowInfo,
-    WorkflowExecutionInfo,
     PendingApproval,
+    ApprovalResponse,
+    SmcpAttestationResponse,
+    SmcpToolsResponse,
+    WorkflowExecutionLogs,
+    Tenant,
+    RateLimitOverride,
+    UsageRecord,
 )
 
 
@@ -22,491 +23,286 @@ class AegisClient:
     """Client for interacting with the AEGIS orchestrator."""
 
     def __init__(self, base_url: str, api_key: Optional[str] = None):
-        """Initialize the AEGIS client.
-
-        Args:
-            base_url: Base URL of the AEGIS orchestrator
-            api_key: Optional API key for authentication
-        """
         self.base_url = base_url.rstrip("/")
-        self.headers = {}
+        self.headers: Dict[str, str] = {}
         if api_key:
             self.headers["Authorization"] = f"Bearer {api_key}"
-        self.client = httpx.AsyncClient(base_url=self.base_url, headers=self.headers, timeout=60.0)
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url, headers=self.headers, timeout=60.0
+        )
 
     async def aclose(self) -> None:
-        """Close the underlying HTTP client."""
         await self.client.aclose()
 
-    # --- Agent Management ---
+    # --- Execution ---
 
-    async def deploy_agent(
-        self, manifest: AgentManifest, force: bool = False
-    ) -> DeploymentResponse:
-        """Deploy an agent to the AEGIS orchestrator.
-
-        Args:
-            manifest: Agent manifest configuration
-            force: Set to true to overwrite an existing agent with same name/version
-
-        Returns:
-            Deployment response with agent ID
-        """
-        params = {"force": "true"} if force else {}
-        response = await self.client.post(
-            "/v1/agents", json=manifest.model_dump(by_alias=True), params=params
-        )
+    async def start_execution(
+        self,
+        agent_id: str,
+        input: str,
+        context_overrides: Optional[Any] = None,
+    ) -> StartExecutionResponse:
+        """Start a new execution. POST /v1/executions"""
+        payload: Dict[str, Any] = {"agent_id": agent_id, "input": input}
+        if context_overrides is not None:
+            payload["context_overrides"] = context_overrides
+        response = await self.client.post("/v1/executions", json=payload)
         response.raise_for_status()
-        return DeploymentResponse(**response.json())
+        return StartExecutionResponse(**response.json())
 
-    async def list_agents(self) -> List[AgentInfo]:
-        """List all deployed agents.
-
-        Returns:
-            List of agent information
-        """
-        response = await self.client.get("/v1/agents")
-        response.raise_for_status()
-        return [AgentInfo(**agent) for agent in response.json()]
-
-    async def get_agent(self, agent_id: str) -> AgentManifest:
-        """Get the manifest of an agent.
-
-        Args:
-            agent_id: ID of the agent
-
-        Returns:
-            Agent manifest information
-        """
-        response = await self.client.get(f"/v1/agents/{agent_id}")
-        response.raise_for_status()
-        return AgentManifest(**response.json())
-
-    async def lookup_agent(self, name: str) -> Optional[str]:
-        """Lookup an agent's UUID by its name.
-
-        Args:
-            name: The name of the agent to look up.
-
-        Returns:
-            The agent's UUID if found, None otherwise.
-        """
-        response = await self.client.get(f"/v1/agents/lookup/{name}")
-        if response.status_code == 404:
-            return None
-        response.raise_for_status()
-        return cast(Optional[str], response.json().get("id"))
-
-    async def delete_agent(self, agent_id: str) -> None:
-        """Delete an agent.
-
-        Args:
-            agent_id: ID of the agent to delete
-        """
-        response = await self.client.delete(f"/v1/agents/{agent_id}")
-        response.raise_for_status()
-
-    async def get_agent_logs(
-        self, agent_id: str, limit: int = 50, offset: int = 0
-    ) -> dict:
-        """Retrieve agent-level activity logs.
-
-        Args:
-            agent_id: UUID of the agent.
-            limit: Maximum number of events to return (default 50).
-            offset: Zero-based starting offset (default 0).
-
-        Returns:
-            Dictionary containing agent activity events.
-        """
-        response = await self.client.get(
-            f"/v1/agents/{agent_id}/logs",
-            params={"limit": limit, "offset": offset},
-        )
-        response.raise_for_status()
-        return response.json()
-
-    async def stream_agent_events(
-        self, agent_id: str, follow: bool = False
+    async def stream_execution(
+        self, execution_id: str, token: Optional[str] = None
     ) -> AsyncGenerator[ExecutionEvent, None]:
-        """Stream events for all executions of an agent.
-
-        Args:
-            agent_id: ID of the agent
-            follow: Whether to follow new events
-
-        Yields:
-            Execution events
-        """
-        params = {"follow": "true" if follow else "false"}
+        """Stream SSE events for an execution. GET /v1/executions/{id}/stream"""
+        params: Dict[str, str] = {}
+        if token:
+            params["token"] = token
         async with self.client.stream(
-            "GET", f"/v1/agents/{agent_id}/events", params=params
+            "GET", f"/v1/executions/{execution_id}/stream", params=params
         ) as response:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data:"):
-                    data = line[len("data:") :].strip()
+                    data = line[len("data:"):].strip()
                     if data:
-                        yield ExecutionEvent(**json.loads(data))
+                        parsed = json.loads(data)
+                        yield ExecutionEvent(
+                            event_type=parsed.get("type", "unknown"),
+                            data=parsed,
+                        )
 
-    # --- Execution Management ---
-
-    async def execute_task(self, agent_id: str, task_input: Any) -> TaskResponse:
-        """Start a new agent execution (task).
-
-        Args:
-            agent_id: ID of the deployed agent
-            task_input: Task input data (intent or payload)
-
-        Returns:
-            Response with execution ID
-        """
-        # Wrap task_input if it's not a dict with 'input'
-        if isinstance(task_input, dict) and "input" in task_input:
-            payload = task_input
-        else:
-            payload = {"input": task_input}
-
-        response = await self.client.post(
-            f"/v1/agents/{agent_id}/execute",
-            json=payload,
-        )
-        response.raise_for_status()
-        return TaskResponse(**response.json())
-
-    async def get_execution(self, execution_id: str) -> ExecutionInfo:
-        """Get details of an execution.
-
-        Args:
-            execution_id: ID of the execution
-
-        Returns:
-            Execution information
-        """
-        response = await self.client.get(f"/v1/executions/{execution_id}")
-        response.raise_for_status()
-        return ExecutionInfo(**response.json())
-
-    async def cancel_execution(self, execution_id: str) -> None:
-        """Cancel an active execution.
-
-        Args:
-            execution_id: ID of the execution to cancel
-        """
-        response = await self.client.post(f"/v1/executions/{execution_id}/cancel")
-        response.raise_for_status()
-
-    async def stream_execution_events(
-        self, execution_id: str, follow: bool = True
-    ) -> AsyncGenerator[ExecutionEvent, None]:
-        """Stream events for a specific execution.
-
-        Args:
-            execution_id: ID of the execution
-            follow: Whether to follow new events
-
-        Yields:
-            Execution events
-        """
-        params = {"follow": "true" if follow else "false"}
-        async with self.client.stream(
-            "GET", f"/v1/executions/{execution_id}/events", params=params
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if line.startswith("data:"):
-                    data = line[len("data:") :].strip()
-                    if data:
-                        yield ExecutionEvent(**json.loads(data))
-
-    async def list_executions(
-        self, agent_id: Optional[str] = None, limit: int = 20
-    ) -> List[ExecutionInfo]:
-        """List recent executions.
-
-        Args:
-            agent_id: Optional agent ID to filter by
-            limit: Maximum number of executions to return
-
-        Returns:
-            List of execution information
-        """
-        params = {}
-        if agent_id:
-            params["agent_id"] = agent_id
-        if limit:
-            params["limit"] = str(limit)
-
-        response = await self.client.get("/v1/executions", params=params)
-        response.raise_for_status()
-        return [ExecutionInfo(**exec_data) for exec_data in response.json()]
-
-    async def delete_execution(self, execution_id: str) -> None:
-        """Delete an execution record.
-
-        Args:
-            execution_id: ID of the execution to delete
-        """
-        response = await self.client.delete(f"/v1/executions/{execution_id}")
-        response.raise_for_status()
-
-    # --- Workflow Management ---
-
-    async def register_workflow(self, manifest_yaml: str, force: bool = False) -> Any:
-        """Register a workflow manifest.
-
-        Args:
-            manifest_yaml: Workflow manifest in YAML format
-            force: Whether to force registration even if it exists
-
-        Returns:
-            Registration result
-        """
-        params = {"force": "true"} if force else {}
-        response = await self.client.post("/v1/workflows", content=manifest_yaml, params=params)
-        response.raise_for_status()
-        return response.json()
-
-    async def list_workflows(self) -> List[WorkflowInfo]:
-        """List all registered workflows.
-
-        Returns:
-            List of workflow information
-        """
-        response = await self.client.get("/v1/workflows")
-        response.raise_for_status()
-        return [WorkflowInfo(**w) for w in response.json()]
-
-    async def get_workflow(self, name: str) -> str:
-        """Get the YAML manifest of a workflow.
-
-        Args:
-            name: Name of the workflow
-
-        Returns:
-            Workflow manifest YAML
-        """
-        response = await self.client.get(f"/v1/workflows/{name}")
-        response.raise_for_status()
-        return response.text
-
-    async def delete_workflow(self, name: str) -> None:
-        """Delete a workflow.
-
-        Args:
-            name: Name of the workflow to delete
-        """
-        response = await self.client.delete(f"/v1/workflows/{name}")
-        response.raise_for_status()
-
-    async def run_workflow(self, name: str, input_data: Any) -> TaskResponse:
-        """Run a workflow (legacy execution endpoint).
-
-        Args:
-            name: Name of the workflow
-            input_data: Input for the workflow
-
-        Returns:
-            Response with execution ID
-        """
-        response = await self.client.post(
-            f"/v1/workflows/{name}/run",
-            json={"input": input_data},
-        )
-        response.raise_for_status()
-        return TaskResponse(**response.json())
-
-    async def execute_temporal_workflow(self, request_data: Dict[str, Any]) -> TaskResponse:
-        """Execute a Temporal workflow.
-
-        Args:
-            request_data: Workflow execution request data
-
-        Returns:
-            Response with execution ID
-        """
-        response = await self.client.post(
-            "/v1/workflows/temporal/execute",
-            json=request_data,
-        )
-        response.raise_for_status()
-        return TaskResponse(**response.json())
-
-    async def list_workflow_executions(
-        self, limit: int = 20, offset: int = 0
-    ) -> List[WorkflowExecutionInfo]:
-        """List workflow executions.
-
-        Args:
-            limit: Maximum number of executions to return
-            offset: Pagination offset
-
-        Returns:
-            List of workflow execution information
-        """
-        params = {"limit": str(limit), "offset": str(offset)}
-        response = await self.client.get("/v1/workflows/executions", params=params)
-        response.raise_for_status()
-        return [WorkflowExecutionInfo(**e) for e in response.json()]
-
-    async def get_workflow_execution(self, execution_id: str) -> Any:
-        """Get details of a workflow execution.
-
-        Args:
-            execution_id: ID of the workflow execution
-
-        Returns:
-            Workflow execution details
-        """
-        response = await self.client.get(f"/v1/workflows/executions/{execution_id}")
-        response.raise_for_status()
-        return response.json()
-
-    async def stream_workflow_logs(self, execution_id: str) -> str:
-        """Get logs for a workflow execution.
-
-        Args:
-            execution_id: ID of the workflow execution
-
-        Returns:
-            Workflow execution logs (text)
-        """
-        response = await self.client.get(f"/v1/workflows/executions/{execution_id}/logs")
-        response.raise_for_status()
-        return response.text
-
-    async def signal_workflow_execution(self, execution_id: str, response_text: str) -> None:
-        """Send a human signal to a workflow execution.
-
-        Args:
-            execution_id: ID of the workflow execution
-            response_text: The signal response text
-        """
-        response = await self.client.post(
-            f"/v1/workflows/executions/{execution_id}/signal",
-            json={"response": response_text},
-        )
-        response.raise_for_status()
-
-    async def cancel_workflow_execution(self, execution_id: str) -> None:
-        """Cancel a running workflow execution."""
-        response = await self.client.post(
-            f"/v1/workflows/executions/{execution_id}/cancel"
-        )
-        response.raise_for_status()
-
-    async def remove_workflow_execution(self, execution_id: str) -> None:
-        """Remove a workflow execution record."""
-        response = await self.client.delete(
-            f"/v1/workflows/executions/{execution_id}"
-        )
-        response.raise_for_status()
-
-    # --- Platform Services ---
+    # --- Human Approvals ---
 
     async def list_pending_approvals(self) -> List[PendingApproval]:
-        """List all pending human approval requests.
-
-        Returns:
-            List of pending approvals
-        """
+        """List pending approval requests. GET /v1/human-approvals"""
         response = await self.client.get("/v1/human-approvals")
         response.raise_for_status()
-        # Orchestrator returns {"pending_requests": [...], "count": ...}
         data = response.json()
         return [PendingApproval(**req) for req in data.get("pending_requests", [])]
 
     async def get_pending_approval(self, approval_id: str) -> PendingApproval:
-        """Get details of a pending approval request.
-
-        Args:
-            approval_id: ID of the approval request
-
-        Returns:
-            Approval request details
-        """
+        """Get a specific pending approval. GET /v1/human-approvals/{id}"""
         response = await self.client.get(f"/v1/human-approvals/{approval_id}")
         response.raise_for_status()
-        # Orchestrator returns {"request": {...}}
         data = response.json()
-        return PendingApproval(id=approval_id, request=data.get("request"))
+        return PendingApproval(**data.get("request", {}))
 
     async def approve_request(
-        self, approval_id: str, feedback: Optional[str] = None, approved_by: Optional[str] = None
-    ) -> None:
-        """Approve a pending human request.
-
-        Args:
-            approval_id: ID of the approval request
-            feedback: Optional feedback string
-            approved_by: Optional identifier of the approver
-        """
-        payload = {}
+        self,
+        approval_id: str,
+        feedback: Optional[str] = None,
+        approved_by: Optional[str] = None,
+    ) -> ApprovalResponse:
+        """Approve a pending request. POST /v1/human-approvals/{id}/approve"""
+        payload: Dict[str, str] = {}
         if feedback:
             payload["feedback"] = feedback
         if approved_by:
             payload["approved_by"] = approved_by
-
         response = await self.client.post(
             f"/v1/human-approvals/{approval_id}/approve", json=payload
         )
         response.raise_for_status()
+        return ApprovalResponse(**response.json())
 
     async def reject_request(
-        self, approval_id: str, reason: str, rejected_by: Optional[str] = None
-    ) -> None:
-        """Reject a pending human request.
-
-        Args:
-            approval_id: ID of the approval request
-            reason: Reason for rejection
-            rejected_by: Optional identifier of the rejecter
-        """
-        payload = {"reason": reason}
+        self,
+        approval_id: str,
+        reason: str,
+        rejected_by: Optional[str] = None,
+    ) -> ApprovalResponse:
+        """Reject a pending request. POST /v1/human-approvals/{id}/reject"""
+        payload: Dict[str, Any] = {"reason": reason}
         if rejected_by:
             payload["rejected_by"] = rejected_by
-
-        response = await self.client.post(f"/v1/human-approvals/{approval_id}/reject", json=payload)
+        response = await self.client.post(
+            f"/v1/human-approvals/{approval_id}/reject", json=payload
+        )
         response.raise_for_status()
+        return ApprovalResponse(**response.json())
+
+    # --- SMCP ---
+
+    async def attest_smcp(self, payload: Dict[str, Any]) -> SmcpAttestationResponse:
+        """Attest an SMCP security token. POST /v1/smcp/attest"""
+        response = await self.client.post("/v1/smcp/attest", json=payload)
+        response.raise_for_status()
+        return SmcpAttestationResponse(**response.json())
+
+    async def invoke_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke an SMCP tool. POST /v1/smcp/invoke"""
+        response = await self.client.post("/v1/smcp/invoke", json=payload)
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+
+    async def list_smcp_tools(
+        self, security_context: Optional[str] = None
+    ) -> SmcpToolsResponse:
+        """List available SMCP tools. GET /v1/smcp/tools"""
+        params: Dict[str, str] = {}
+        headers: Dict[str, str] = {}
+        if security_context:
+            params["security_context"] = security_context
+            headers["X-Zaru-Security-Context"] = security_context
+        response = await self.client.get(
+            "/v1/smcp/tools", params=params, headers=headers
+        )
+        response.raise_for_status()
+        return SmcpToolsResponse(**response.json())
+
+    # --- Dispatch Gateway ---
 
     async def dispatch_gateway(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Dispatch a message to the inner loop gateway.
-
-        Args:
-            payload: Gateway message payload
-
-        Returns:
-            Gateway response
-        """
+        """Dispatch a message to the inner loop gateway. POST /v1/dispatch-gateway"""
         response = await self.client.post("/v1/dispatch-gateway", json=payload)
         response.raise_for_status()
         return cast(Dict[str, Any], response.json())
 
-    async def attest_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Attest an SMCP security token.
+    # --- Stimulus ---
 
-        Args:
-            payload: Attestation request payload
-
-        Returns:
-            Attestation response
-        """
-        response = await self.client.post("/v1/smcp/attest", json=payload)
+    async def ingest_stimulus(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Ingest an external stimulus. POST /v1/stimuli"""
+        response = await self.client.post("/v1/stimuli", json=payload)
         response.raise_for_status()
         return cast(Dict[str, Any], response.json())
 
-    async def invoke_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Invoke an SMCP tool through the gateway.
-
-        Args:
-            payload: SMCP envelope payload
-
-        Returns:
-            Tool invocation response
-        """
-        response = await self.client.post("/v1/smcp/invoke", json=payload)
+    async def send_webhook(self, source: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Send a webhook event. POST /v1/webhooks/{source}"""
+        response = await self.client.post(f"/v1/webhooks/{source}", json=payload)
         response.raise_for_status()
         return cast(Dict[str, Any], response.json())
+
+    # --- Workflow Logs ---
+
+    async def get_workflow_execution_logs(
+        self,
+        execution_id: str,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
+    ) -> WorkflowExecutionLogs:
+        """Get workflow execution logs. GET /v1/workflows/executions/{id}/logs"""
+        params: Dict[str, str] = {}
+        if limit is not None:
+            params["limit"] = str(limit)
+        if offset is not None:
+            params["offset"] = str(offset)
+        response = await self.client.get(
+            f"/v1/workflows/executions/{execution_id}/logs", params=params
+        )
+        response.raise_for_status()
+        return WorkflowExecutionLogs(**response.json())
+
+    async def stream_workflow_execution_logs(
+        self, execution_id: str
+    ) -> AsyncGenerator[ExecutionEvent, None]:
+        """Stream workflow execution logs via SSE. GET /v1/workflows/executions/{id}/logs/stream"""
+        async with self.client.stream(
+            "GET", f"/v1/workflows/executions/{execution_id}/logs/stream"
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.startswith("data:"):
+                    data = line[len("data:"):].strip()
+                    if data:
+                        parsed = json.loads(data)
+                        yield ExecutionEvent(
+                            event_type=parsed.get("type", "unknown"),
+                            data=parsed,
+                        )
+
+    # --- Admin: Tenant Management ---
+
+    async def create_tenant(self, slug: str, display_name: str, tier: str = "enterprise") -> Tenant:
+        """Create a new tenant. POST /v1/admin/tenants"""
+        payload = {"slug": slug, "display_name": display_name, "tier": tier}
+        response = await self.client.post("/v1/admin/tenants", json=payload)
+        response.raise_for_status()
+        return Tenant(**response.json())
+
+    async def list_tenants(self) -> List[Tenant]:
+        """List all tenants. GET /v1/admin/tenants"""
+        response = await self.client.get("/v1/admin/tenants")
+        response.raise_for_status()
+        data = response.json()
+        return [Tenant(**t) for t in data.get("tenants", [])]
+
+    async def suspend_tenant(self, slug: str) -> Dict[str, str]:
+        """Suspend a tenant. POST /v1/admin/tenants/{slug}/suspend"""
+        response = await self.client.post(f"/v1/admin/tenants/{slug}/suspend")
+        response.raise_for_status()
+        return cast(Dict[str, str], response.json())
+
+    async def delete_tenant(self, slug: str) -> Dict[str, str]:
+        """Soft-delete a tenant. DELETE /v1/admin/tenants/{slug}"""
+        response = await self.client.delete(f"/v1/admin/tenants/{slug}")
+        response.raise_for_status()
+        return cast(Dict[str, str], response.json())
+
+    # --- Admin: Rate Limits ---
+
+    async def list_rate_limit_overrides(
+        self,
+        tenant_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> List[RateLimitOverride]:
+        """List rate limit overrides. GET /v1/admin/rate-limits/overrides"""
+        params: Dict[str, str] = {}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        if user_id:
+            params["user_id"] = user_id
+        response = await self.client.get(
+            "/v1/admin/rate-limits/overrides", params=params
+        )
+        response.raise_for_status()
+        data = response.json()
+        return [RateLimitOverride(**o) for o in data.get("overrides", [])]
+
+    async def create_rate_limit_override(
+        self, payload: Dict[str, Any]
+    ) -> RateLimitOverride:
+        """Create or update a rate limit override. POST /v1/admin/rate-limits/overrides"""
+        response = await self.client.post(
+            "/v1/admin/rate-limits/overrides", json=payload
+        )
+        response.raise_for_status()
+        return RateLimitOverride(**response.json())
+
+    async def delete_rate_limit_override(self, override_id: str) -> Dict[str, str]:
+        """Delete a rate limit override. DELETE /v1/admin/rate-limits/overrides/{id}"""
+        response = await self.client.delete(
+            f"/v1/admin/rate-limits/overrides/{override_id}"
+        )
+        response.raise_for_status()
+        return cast(Dict[str, str], response.json())
+
+    async def get_rate_limit_usage(
+        self, scope_type: str, scope_id: str
+    ) -> List[UsageRecord]:
+        """Get rate limit usage. GET /v1/admin/rate-limits/usage"""
+        params = {"scope_type": scope_type, "scope_id": scope_id}
+        response = await self.client.get(
+            "/v1/admin/rate-limits/usage", params=params
+        )
+        response.raise_for_status()
+        data = response.json()
+        return [UsageRecord(**u) for u in data.get("usage", [])]
+
+    # --- Health ---
+
+    async def health_live(self) -> Dict[str, str]:
+        """Liveness check. GET /health/live"""
+        response = await self.client.get("/health/live")
+        response.raise_for_status()
+        return cast(Dict[str, str], response.json())
+
+    async def health_ready(self) -> Dict[str, str]:
+        """Readiness check. GET /health/ready"""
+        response = await self.client.get("/health/ready")
+        response.raise_for_status()
+        return cast(Dict[str, str], response.json())
+
+    # --- Context Manager ---
 
     async def __aenter__(self) -> "AegisClient":
         return self
