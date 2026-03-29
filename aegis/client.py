@@ -27,9 +27,7 @@ class AegisClient:
         self.headers: Dict[str, str] = {}
         if api_key:
             self.headers["Authorization"] = f"Bearer {api_key}"
-        self.client = httpx.AsyncClient(
-            base_url=self.base_url, headers=self.headers, timeout=60.0
-        )
+        self.client = httpx.AsyncClient(base_url=self.base_url, headers=self.headers, timeout=60.0)
 
     async def aclose(self) -> None:
         await self.client.aclose()
@@ -63,7 +61,7 @@ class AegisClient:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data:"):
-                    data = line[len("data:"):].strip()
+                    data = line[len("data:") :].strip()
                     if data:
                         parsed = json.loads(data)
                         yield ExecutionEvent(
@@ -115,9 +113,7 @@ class AegisClient:
         payload: Dict[str, Any] = {"reason": reason}
         if rejected_by:
             payload["rejected_by"] = rejected_by
-        response = await self.client.post(
-            f"/v1/human-approvals/{approval_id}/reject", json=payload
-        )
+        response = await self.client.post(f"/v1/human-approvals/{approval_id}/reject", json=payload)
         response.raise_for_status()
         return ApprovalResponse(**response.json())
 
@@ -135,18 +131,14 @@ class AegisClient:
         response.raise_for_status()
         return cast(Dict[str, Any], response.json())
 
-    async def list_smcp_tools(
-        self, security_context: Optional[str] = None
-    ) -> SmcpToolsResponse:
+    async def list_smcp_tools(self, security_context: Optional[str] = None) -> SmcpToolsResponse:
         """List available SMCP tools. GET /v1/smcp/tools"""
         params: Dict[str, str] = {}
         headers: Dict[str, str] = {}
         if security_context:
             params["security_context"] = security_context
             headers["X-Zaru-Security-Context"] = security_context
-        response = await self.client.get(
-            "/v1/smcp/tools", params=params, headers=headers
-        )
+        response = await self.client.get("/v1/smcp/tools", params=params, headers=headers)
         response.raise_for_status()
         return SmcpToolsResponse(**response.json())
 
@@ -202,7 +194,7 @@ class AegisClient:
             response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data:"):
-                    data = line[len("data:"):].strip()
+                    data = line[len("data:") :].strip()
                     if data:
                         parsed = json.loads(data)
                         yield ExecutionEvent(
@@ -212,9 +204,7 @@ class AegisClient:
 
     # --- Admin: Tenant Management ---
 
-    async def create_tenant(
-        self, slug: str, display_name: str, tier: str = "enterprise"
-    ) -> Tenant:
+    async def create_tenant(self, slug: str, display_name: str, tier: str = "enterprise") -> Tenant:
         """Create a new tenant. POST /v1/admin/tenants"""
         payload = {"slug": slug, "display_name": display_name, "tier": tier}
         response = await self.client.post("/v1/admin/tenants", json=payload)
@@ -253,39 +243,27 @@ class AegisClient:
             params["tenant_id"] = tenant_id
         if user_id:
             params["user_id"] = user_id
-        response = await self.client.get(
-            "/v1/admin/rate-limits/overrides", params=params
-        )
+        response = await self.client.get("/v1/admin/rate-limits/overrides", params=params)
         response.raise_for_status()
         data = response.json()
         return [RateLimitOverride(**o) for o in data.get("overrides", [])]
 
-    async def create_rate_limit_override(
-        self, payload: Dict[str, Any]
-    ) -> RateLimitOverride:
+    async def create_rate_limit_override(self, payload: Dict[str, Any]) -> RateLimitOverride:
         """Create or update a rate limit override. POST /v1/admin/rate-limits/overrides"""
-        response = await self.client.post(
-            "/v1/admin/rate-limits/overrides", json=payload
-        )
+        response = await self.client.post("/v1/admin/rate-limits/overrides", json=payload)
         response.raise_for_status()
         return RateLimitOverride(**response.json())
 
     async def delete_rate_limit_override(self, override_id: str) -> Dict[str, str]:
         """Delete a rate limit override. DELETE /v1/admin/rate-limits/overrides/{id}"""
-        response = await self.client.delete(
-            f"/v1/admin/rate-limits/overrides/{override_id}"
-        )
+        response = await self.client.delete(f"/v1/admin/rate-limits/overrides/{override_id}")
         response.raise_for_status()
         return cast(Dict[str, str], response.json())
 
-    async def get_rate_limit_usage(
-        self, scope_type: str, scope_id: str
-    ) -> List[UsageRecord]:
+    async def get_rate_limit_usage(self, scope_type: str, scope_id: str) -> List[UsageRecord]:
         """Get rate limit usage. GET /v1/admin/rate-limits/usage"""
         params = {"scope_type": scope_type, "scope_id": scope_id}
-        response = await self.client.get(
-            "/v1/admin/rate-limits/usage", params=params
-        )
+        response = await self.client.get("/v1/admin/rate-limits/usage", params=params)
         response.raise_for_status()
         data = response.json()
         return [UsageRecord(**u) for u in data.get("usage", [])]
