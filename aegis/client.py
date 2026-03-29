@@ -212,7 +212,9 @@ class AegisClient:
 
     # --- Admin: Tenant Management ---
 
-    async def create_tenant(self, slug: str, display_name: str, tier: str = "enterprise") -> Tenant:
+    async def create_tenant(
+        self, slug: str, display_name: str, tier: str = "enterprise"
+    ) -> Tenant:
         """Create a new tenant. POST /v1/admin/tenants"""
         payload = {"slug": slug, "display_name": display_name, "tier": tier}
         response = await self.client.post("/v1/admin/tenants", json=payload)
