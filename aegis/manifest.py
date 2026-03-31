@@ -38,6 +38,7 @@ class ManifestMetadata(BaseModel):
         default="1.0.0", description="Manifest schema version (semantic versioning)"
     )
     description: Optional[str] = Field(default=None, description="Human-readable description")
+    tags: List[str] = Field(default_factory=list, description="Categorization tags")
     labels: Dict[str, str] = Field(
         default_factory=dict, description="Key-value labels for categorization"
     )
