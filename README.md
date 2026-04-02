@@ -87,10 +87,10 @@ class AegisClient:
     async def approve_request(self, approval_id: str, feedback: Optional[str] = None, approved_by: Optional[str] = None) -> ApprovalResponse
     async def reject_request(self, approval_id: str, reason: str, rejected_by: Optional[str] = None) -> ApprovalResponse
 
-    # SMCP
-    async def attest_smcp(self, payload: Dict[str, Any]) -> SmcpAttestationResponse
-    async def invoke_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]
-    async def list_smcp_tools(self, security_context: Optional[str] = None) -> SmcpToolsResponse
+    # SEAL
+    async def attest_seal(self, payload: Dict[str, Any]) -> SealAttestationResponse
+    async def invoke_seal(self, payload: Dict[str, Any]) -> Dict[str, Any]
+    async def list_seal_tools(self, security_context: Optional[str] = None) -> SealToolsResponse
 
     # Dispatch Gateway
     async def dispatch_gateway(self, payload: Dict[str, Any]) -> Dict[str, Any]

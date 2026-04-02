@@ -10,8 +10,8 @@ from .types import (
     ExecutionEvent,
     PendingApproval,
     ApprovalResponse,
-    SmcpAttestationResponse,
-    SmcpToolsResponse,
+    SealAttestationResponse,
+    SealToolsResponse,
     WorkflowExecutionLogs,
     Tenant,
     RateLimitOverride,
@@ -117,30 +117,30 @@ class AegisClient:
         response.raise_for_status()
         return ApprovalResponse(**response.json())
 
-    # --- SMCP ---
+    # --- SEAL ---
 
-    async def attest_smcp(self, payload: Dict[str, Any]) -> SmcpAttestationResponse:
-        """Attest an SMCP security token. POST /v1/smcp/attest"""
-        response = await self.client.post("/v1/smcp/attest", json=payload)
+    async def attest_seal(self, payload: Dict[str, Any]) -> SealAttestationResponse:
+        """Attest a SEAL security token. POST /v1/seal/attest"""
+        response = await self.client.post("/v1/seal/attest", json=payload)
         response.raise_for_status()
-        return SmcpAttestationResponse(**response.json())
+        return SealAttestationResponse(**response.json())
 
-    async def invoke_smcp(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Invoke an SMCP tool. POST /v1/smcp/invoke"""
-        response = await self.client.post("/v1/smcp/invoke", json=payload)
+    async def invoke_seal(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke a SEAL tool. POST /v1/seal/invoke"""
+        response = await self.client.post("/v1/seal/invoke", json=payload)
         response.raise_for_status()
         return cast(Dict[str, Any], response.json())
 
-    async def list_smcp_tools(self, security_context: Optional[str] = None) -> SmcpToolsResponse:
-        """List available SMCP tools. GET /v1/smcp/tools"""
+    async def list_seal_tools(self, security_context: Optional[str] = None) -> SealToolsResponse:
+        """List available SEAL tools. GET /v1/seal/tools"""
         params: Dict[str, str] = {}
         headers: Dict[str, str] = {}
         if security_context:
             params["security_context"] = security_context
             headers["X-Zaru-Security-Context"] = security_context
-        response = await self.client.get("/v1/smcp/tools", params=params, headers=headers)
+        response = await self.client.get("/v1/seal/tools", params=params, headers=headers)
         response.raise_for_status()
-        return SmcpToolsResponse(**response.json())
+        return SealToolsResponse(**response.json())
 
     # --- Dispatch Gateway ---
 

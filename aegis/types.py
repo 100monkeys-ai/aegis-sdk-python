@@ -41,8 +41,8 @@ class ApprovalResponse(BaseModel):
     status: str
 
 
-class SmcpAttestationRequest(BaseModel):
-    """Request body for POST /v1/smcp/attest."""
+class SealAttestationRequest(BaseModel):
+    """Request body for POST /v1/seal/attest."""
 
     agent_public_key: str
     container_id: Optional[str] = None
@@ -56,14 +56,14 @@ class SmcpAttestationRequest(BaseModel):
     tenant_id: Optional[str] = None
 
 
-class SmcpAttestationResponse(BaseModel):
-    """Response from POST /v1/smcp/attest."""
+class SealAttestationResponse(BaseModel):
+    """Response from POST /v1/seal/attest."""
 
     security_token: str
 
 
-class SmcpToolInvokeRequest(BaseModel):
-    """Request body for POST /v1/smcp/invoke."""
+class SealToolInvokeRequest(BaseModel):
+    """Request body for POST /v1/seal/invoke."""
 
     security_token: str
     signature: str
@@ -72,8 +72,8 @@ class SmcpToolInvokeRequest(BaseModel):
     timestamp: Optional[str] = None
 
 
-class SmcpToolsResponse(BaseModel):
-    """Response from GET /v1/smcp/tools."""
+class SealToolsResponse(BaseModel):
+    """Response from GET /v1/seal/tools."""
 
     protocol: str
     attestation_endpoint: str

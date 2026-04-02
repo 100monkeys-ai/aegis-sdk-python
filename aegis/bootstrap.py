@@ -129,7 +129,7 @@ class FinalMessage(BaseModel):
 class DispatchMessage(BaseModel):
     """Command directive — bootstrap.py executes the action and re-POSTs a result.
 
-    The orchestrator only sends this message after SMCP policy has been evaluated
+    The orchestrator only sends this message after SEAL policy has been evaluated
     server-side.  bootstrap.py is a trusted executor; it does not re-validate.
     """
 
@@ -151,7 +151,7 @@ class DispatchMessage(BaseModel):
     )
     args: list[str] = Field(
         default_factory=list,
-        description="[exec] Command arguments (pre-validated by orchestrator SMCP policy).",
+        description="[exec] Command arguments (pre-validated by orchestrator SEAL policy).",
     )
     cwd: str = Field(
         default="/workspace",

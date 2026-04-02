@@ -107,32 +107,32 @@ async def test_reject_request():
 
 
 @pytest.mark.asyncio
-async def test_attest_smcp():
+async def test_attest_seal():
     client = AegisClient(base_url="http://localhost:8088")
     mock_response = MagicMock()
     mock_response.json.return_value = {"security_token": "jwt-token"}
     mock_response.raise_for_status = MagicMock()
     client.client.post = AsyncMock(return_value=mock_response)
 
-    result = await client.attest_smcp({"agent_public_key": "key123"})
+    result = await client.attest_seal({"agent_public_key": "key123"})
     assert result.security_token == "jwt-token"
 
 
 @pytest.mark.asyncio
-async def test_list_smcp_tools():
+async def test_list_seal_tools():
     client = AegisClient(base_url="http://localhost:8088")
     mock_response = MagicMock()
     mock_response.json.return_value = {
-        "protocol": "smcp/v1",
-        "attestation_endpoint": "/v1/smcp/attest",
-        "invoke_endpoint": "/v1/smcp/invoke",
+        "protocol": "seal/v1",
+        "attestation_endpoint": "/v1/seal/attest",
+        "invoke_endpoint": "/v1/seal/invoke",
         "tools": [{"name": "tool1"}],
     }
     mock_response.raise_for_status = MagicMock()
     client.client.get = AsyncMock(return_value=mock_response)
 
-    result = await client.list_smcp_tools()
-    assert result.protocol == "smcp/v1"
+    result = await client.list_seal_tools()
+    assert result.protocol == "seal/v1"
     assert len(result.tools) == 1
 
 
