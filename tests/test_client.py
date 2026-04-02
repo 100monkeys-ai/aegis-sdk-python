@@ -110,12 +110,20 @@ async def test_reject_request():
 async def test_attest_seal():
     client = AegisClient(base_url="http://localhost:8088")
     mock_response = MagicMock()
-    mock_response.json.return_value = {"security_token": "jwt-token"}
+    mock_response.json.return_value = {
+        "status": "success",
+        "security_token": "jwt-token",
+        "expires_at": "2026-04-01T12:00:00Z",
+        "session_id": "sess-abc",
+    }
     mock_response.raise_for_status = MagicMock()
     client.client.post = AsyncMock(return_value=mock_response)
 
     result = await client.attest_seal({"agent_public_key": "key123"})
+    assert result.status == "success"
     assert result.security_token == "jwt-token"
+    assert result.expires_at == "2026-04-01T12:00:00Z"
+    assert result.session_id == "sess-abc"
 
 
 @pytest.mark.asyncio

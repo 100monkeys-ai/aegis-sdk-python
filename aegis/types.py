@@ -59,7 +59,10 @@ class SealAttestationRequest(BaseModel):
 class SealAttestationResponse(BaseModel):
     """Response from POST /v1/seal/attest."""
 
+    status: str
     security_token: str
+    expires_at: str
+    session_id: Optional[str] = None
 
 
 class SealToolInvokeRequest(BaseModel):
