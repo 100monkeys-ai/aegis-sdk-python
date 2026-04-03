@@ -13,6 +13,15 @@ from .bootstrap import (
 )
 from .client import AegisClient
 from .manifest import AgentManifest
+from .seal import (
+    AttestationResult,
+    Ed25519Key,
+    SEALClient,
+    SEALError,
+    create_canonical_message,
+    create_seal_envelope,
+    verify_seal_envelope,
+)
 from .types import (
     ApprovalResponse,
     CreateRateLimitOverrideRequest,
@@ -63,4 +72,12 @@ __all__ = [
     "DispatchResultMessage",
     "FinalMessage",
     "DispatchMessage",
+    # SEAL protocol
+    "SEALClient",
+    "SEALError",
+    "AttestationResult",
+    "Ed25519Key",
+    "create_seal_envelope",
+    "create_canonical_message",
+    "verify_seal_envelope",
 ]

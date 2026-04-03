@@ -71,8 +71,8 @@ class SealToolInvokeRequest(BaseModel):
     security_token: str
     signature: str
     payload: Any
-    protocol: Optional[str] = None
-    timestamp: Optional[str] = None
+    protocol: str
+    timestamp: str
 
 
 class SealToolsResponse(BaseModel):
