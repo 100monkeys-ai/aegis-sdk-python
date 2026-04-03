@@ -190,6 +190,7 @@ class AgentSpec(BaseModel):
     tools: List[str] = Field(default_factory=list, description="MCP tools")
     env: Dict[str, str] = Field(default_factory=dict, description="Environment variables")
     advanced: Optional[AdvancedConfig] = Field(default=None)
+    input_schema: Optional[Dict[str, Any]] = None
 
 
 class AgentManifest(BaseModel):
