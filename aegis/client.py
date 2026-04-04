@@ -38,10 +38,13 @@ class AegisClient:
         self,
         agent_id: str,
         input: str,
+        intent: Optional[str] = None,
         context_overrides: Optional[Any] = None,
     ) -> StartExecutionResponse:
         """Start a new execution. POST /v1/executions"""
         payload: Dict[str, Any] = {"agent_id": agent_id, "input": input}
+        if intent is not None:
+            payload["intent"] = intent
         if context_overrides is not None:
             payload["context_overrides"] = context_overrides
         response = await self.client.post("/v1/executions", json=payload)

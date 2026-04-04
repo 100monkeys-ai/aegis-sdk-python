@@ -9,6 +9,7 @@ class StartExecutionRequest(BaseModel):
 
     agent_id: str
     input: str
+    intent: Optional[str] = None
     context_overrides: Optional[Any] = None
 
 
