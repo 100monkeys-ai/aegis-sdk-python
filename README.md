@@ -19,8 +19,14 @@ import asyncio
 from aegis import AegisClient
 
 async def main():
-    # Create a client
-    async with AegisClient("https://api.100monkeys.ai", api_key="your-api-key") as client:
+    # Create a client — token acquisition and refresh are handled automatically
+    async with AegisClient(
+        base_url="https://your-orchestrator.example.com",
+        keycloak_url="https://auth.example.com",
+        realm="aegis-system",
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+    ) as client:
         # Start an execution
         result = await client.start_execution(
             agent_id="my-agent-id",
@@ -39,6 +45,7 @@ asyncio.run(main())
 
 - **Type-safe API**: Full type hints with Pydantic models
 - **Async/await**: Built on `httpx` for high-performance async operations
+- **OAuth2 Client Credentials**: Automatic token acquisition and refresh via Keycloak
 - **Manifest validation**: Runtime validation of agent configurations
 - **Error handling**: Comprehensive error handling with context
 
@@ -74,7 +81,15 @@ env:
 
 ```python
 class AegisClient:
-    def __init__(self, base_url: str, api_key: Optional[str] = None)
+    def __init__(
+        self,
+        base_url: str,
+        keycloak_url: str,
+        realm: str,
+        client_id: str,
+        client_secret: str,
+        token_refresh_buffer_secs: int = 30,
+    )
     async def aclose(self) -> None
 
     # Execution
