@@ -8,59 +8,87 @@ import pytest
 
 from aegis.client import AegisClient
 
+OAUTH2_KWARGS = dict(
+    base_url="http://localhost:8088",
+    keycloak_url="http://keycloak:8080",
+    realm="aegis",
+    client_id="aegis-sdk",
+    client_secret="test-secret",
+)
+
+
+def make_client() -> AegisClient:
+    return AegisClient(**OAUTH2_KWARGS)
+
 
 def test_client_init():
-    client = AegisClient(base_url="http://localhost:8088", api_key="test-key")
-    assert client.base_url == "http://localhost:8088"
-    assert client.headers["Authorization"] == "Bearer test-key"
+    client = make_client()
+    assert client._base_url == "http://localhost:8088"
+    assert client._token_url == ("http://keycloak:8080/realms/aegis/protocol/openid-connect/token")
+    assert client._client_id == "aegis-sdk"
+    assert client._client_secret == "test-secret"
+    assert client._refresh_buffer == 30
+    assert client._access_token is None
+    assert client._token_expires_at == 0.0
 
 
-def test_client_init_no_key():
-    client = AegisClient(base_url="http://localhost:8088")
-    assert "Authorization" not in client.headers
+def test_client_init_custom_buffer():
+    client = AegisClient(**OAUTH2_KWARGS, token_refresh_buffer_secs=60)
+    assert client._refresh_buffer == 60
 
 
 @pytest.mark.asyncio
 async def test_client_context_manager():
-    async with AegisClient(base_url="http://localhost:8088") as c:
-        assert c.base_url == "http://localhost:8088"
+    async with AegisClient(**OAUTH2_KWARGS) as c:
+        assert c._base_url == "http://localhost:8088"
 
 
 @pytest.mark.asyncio
 async def test_start_execution():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"execution_id": "exec-123"}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.start_execution("agent-1", "do something")
     assert result.execution_id == "exec-123"
-    client.client.post.assert_called_once_with(
+    client._ensure_token.assert_awaited_once()
+    client._http_client.post.assert_called_once_with(
         "/v1/executions",
         json={"agent_id": "agent-1", "input": "do something"},
+        headers={"Authorization": "Bearer tok"},
     )
 
 
 @pytest.mark.asyncio
 async def test_start_execution_with_overrides():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"execution_id": "exec-456"}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
-    result = await client.start_execution("agent-1", "do something", context_overrides={"key": "val"})
+    result = await client.start_execution(
+        "agent-1", "do something", context_overrides={"key": "val"}
+    )
     assert result.execution_id == "exec-456"
-    client.client.post.assert_called_once_with(
+    client._http_client.post.assert_called_once_with(
         "/v1/executions",
         json={"agent_id": "agent-1", "input": "do something", "context_overrides": {"key": "val"}},
+        headers={"Authorization": "Bearer tok"},
     )
 
 
 @pytest.mark.asyncio
 async def test_list_pending_approvals():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "pending_requests": [
@@ -74,7 +102,7 @@ async def test_list_pending_approvals():
         ]
     }
     mock_response.raise_for_status = MagicMock()
-    client.client.get = AsyncMock(return_value=mock_response)
+    client._http_client.get = AsyncMock(return_value=mock_response)
 
     result = await client.list_pending_approvals()
     assert len(result) == 1
@@ -84,11 +112,13 @@ async def test_list_pending_approvals():
 
 @pytest.mark.asyncio
 async def test_approve_request():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"status": "approved"}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.approve_request("a-1", feedback="looks good")
     assert result.status == "approved"
@@ -96,11 +126,13 @@ async def test_approve_request():
 
 @pytest.mark.asyncio
 async def test_reject_request():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"status": "rejected"}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.reject_request("a-1", reason="not ready")
     assert result.status == "rejected"
@@ -108,7 +140,9 @@ async def test_reject_request():
 
 @pytest.mark.asyncio
 async def test_attest_seal():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "status": "success",
@@ -117,7 +151,7 @@ async def test_attest_seal():
         "session_id": "sess-abc",
     }
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.attest_seal({"agent_public_key": "key123"})
     assert result.status == "success"
@@ -128,7 +162,9 @@ async def test_attest_seal():
 
 @pytest.mark.asyncio
 async def test_list_seal_tools():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "protocol": "seal/v1",
@@ -137,7 +173,7 @@ async def test_list_seal_tools():
         "tools": [{"name": "tool1"}],
     }
     mock_response.raise_for_status = MagicMock()
-    client.client.get = AsyncMock(return_value=mock_response)
+    client._http_client.get = AsyncMock(return_value=mock_response)
 
     result = await client.list_seal_tools()
     assert result.protocol == "seal/v1"
@@ -146,11 +182,13 @@ async def test_list_seal_tools():
 
 @pytest.mark.asyncio
 async def test_dispatch_gateway():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"result": "ok"}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.dispatch_gateway({"type": "generate"})
     assert result["result"] == "ok"
@@ -158,11 +196,13 @@ async def test_dispatch_gateway():
 
 @pytest.mark.asyncio
 async def test_ingest_stimulus():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"accepted": True}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.ingest_stimulus({"event": "test"})
     assert result["accepted"] is True
@@ -170,22 +210,28 @@ async def test_ingest_stimulus():
 
 @pytest.mark.asyncio
 async def test_send_webhook():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"ok": True}
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.send_webhook("github", {"action": "push"})
     assert result["ok"] is True
-    client.client.post.assert_called_once_with(
-        "/v1/webhooks/github", json={"action": "push"}
+    client._http_client.post.assert_called_once_with(
+        "/v1/webhooks/github",
+        json={"action": "push"},
+        headers={"Authorization": "Bearer tok"},
     )
 
 
 @pytest.mark.asyncio
 async def test_get_workflow_execution_logs():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "execution_id": "wf-1",
@@ -195,7 +241,7 @@ async def test_get_workflow_execution_logs():
         "offset": 0,
     }
     mock_response.raise_for_status = MagicMock()
-    client.client.get = AsyncMock(return_value=mock_response)
+    client._http_client.get = AsyncMock(return_value=mock_response)
 
     result = await client.get_workflow_execution_logs("wf-1")
     assert result.execution_id == "wf-1"
@@ -204,7 +250,9 @@ async def test_get_workflow_execution_logs():
 
 @pytest.mark.asyncio
 async def test_create_tenant():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {
         "slug": "acme",
@@ -218,7 +266,7 @@ async def test_create_tenant():
         "updated_at": "2026-01-01T00:00:00Z",
     }
     mock_response.raise_for_status = MagicMock()
-    client.client.post = AsyncMock(return_value=mock_response)
+    client._http_client.post = AsyncMock(return_value=mock_response)
 
     result = await client.create_tenant("acme", "Acme Corp")
     assert result.slug == "acme"
@@ -227,11 +275,13 @@ async def test_create_tenant():
 
 @pytest.mark.asyncio
 async def test_health_live():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"status": "ok"}
     mock_response.raise_for_status = MagicMock()
-    client.client.get = AsyncMock(return_value=mock_response)
+    client._http_client.get = AsyncMock(return_value=mock_response)
 
     result = await client.health_live()
     assert result["status"] == "ok"
@@ -239,11 +289,72 @@ async def test_health_live():
 
 @pytest.mark.asyncio
 async def test_health_ready():
-    client = AegisClient(base_url="http://localhost:8088")
+    client = make_client()
+    client._ensure_token = AsyncMock()
+    client._access_token = "tok"
     mock_response = MagicMock()
     mock_response.json.return_value = {"status": "ready"}
     mock_response.raise_for_status = MagicMock()
-    client.client.get = AsyncMock(return_value=mock_response)
+    client._http_client.get = AsyncMock(return_value=mock_response)
 
     result = await client.health_ready()
     assert result["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_fetch_token_success():
+    client = make_client()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"access_token": "new-tok", "expires_in": 300}
+    client._http_client.post = AsyncMock(return_value=mock_response)
+
+    await client._fetch_token()
+    assert client._access_token == "new-tok"
+    assert client._token_expires_at > 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_token_failure():
+    client = make_client()
+    mock_response = MagicMock()
+    mock_response.status_code = 401
+    mock_response.text = "Unauthorized"
+    client._http_client.post = AsyncMock(return_value=mock_response)
+
+    with pytest.raises(RuntimeError, match="Failed to fetch access token"):
+        await client._fetch_token()
+
+
+@pytest.mark.asyncio
+async def test_ensure_token_fetches_when_none():
+    client = make_client()
+    client._fetch_token = AsyncMock()
+    await client._ensure_token()
+    client._fetch_token.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ensure_token_skips_when_valid():
+    import time
+
+    client = make_client()
+    client._access_token = "existing-tok"
+    client._token_expires_at = time.time() + 120
+    client._fetch_token = AsyncMock()
+
+    await client._ensure_token()
+    client._fetch_token.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_ensure_token_refreshes_when_expired():
+    import time
+
+    client = make_client()
+    client._access_token = "old-tok"
+    client._token_expires_at = time.time() - 1
+    client._fetch_token = AsyncMock()
+
+    await client._ensure_token()
+    client._fetch_token.assert_awaited_once()
