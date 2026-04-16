@@ -23,6 +23,7 @@ from .seal import (
     verify_seal_envelope,
 )
 from .types import (
+    # Existing types
     ApprovalResponse,
     CreateRateLimitOverrideRequest,
     CreateTenantRequest,
@@ -39,6 +40,68 @@ from .types import (
     TenantQuotas,
     UsageRecord,
     WorkflowExecutionLogs,
+    # Agent types
+    AgentDetail,
+    AgentListResponse,
+    AgentSummary,
+    AgentVersion,
+    AgentVersionListResponse,
+    DeployAgentResponse,
+    ExecuteAgentResponse,
+    # Workflow types
+    ExecuteWorkflowResponse,
+    WorkflowExecutionListResponse,
+    WorkflowExecutionSummary,
+    WorkflowListResponse,
+    WorkflowSummary,
+    WorkflowVersion,
+    WorkflowVersionListResponse,
+    # Execution types
+    ExecutionDetail,
+    ExecutionListResponse,
+    ExecutionSummary,
+    # Volume types
+    UploadFileResponse,
+    Volume,
+    VolumeFileEntry,
+    VolumeListResponse,
+    VolumeQuota,
+    # Credential types
+    CredentialGrant,
+    CredentialSummary,
+    DevicePollResponse,
+    OAuthInitiateResponse,
+    # Secret types
+    SecretEntry,
+    SecretValue,
+    # API Key types
+    ApiKeyInfo,
+    ApiKeyWithValue,
+    # Colony types
+    ColonyMember,
+    SamlIdpConfig,
+    SubscriptionInfo,
+    # Cluster types
+    ClusterNode,
+    ClusterNodesResponse,
+    ClusterStatus,
+    # Swarm types
+    SwarmListResponse,
+    SwarmSummary,
+    # Stimulus types
+    StimulusListResponse,
+    StimulusSummary,
+    # Observability types
+    DashboardSummary,
+    SecurityIncident,
+    StorageViolation,
+    # Cortex types
+    CortexMetrics,
+    CortexPattern,
+    CortexSkill,
+    # User types
+    RateLimitBucket,
+    UserRateLimitUsage,
 )
 
 __version__ = "0.15.0a0"
@@ -47,7 +110,7 @@ __all__ = [
     # Control-plane client
     "AegisClient",
     "AgentManifest",
-    # Request/Response types
+    # Existing request/response types
     "StartExecutionRequest",
     "StartExecutionResponse",
     "ExecutionEvent",
@@ -65,6 +128,68 @@ __all__ = [
     "CreateRateLimitOverrideRequest",
     "RateLimitOverride",
     "UsageRecord",
+    # Agent types
+    "AgentSummary",
+    "AgentDetail",
+    "AgentVersion",
+    "AgentListResponse",
+    "AgentVersionListResponse",
+    "DeployAgentResponse",
+    "ExecuteAgentResponse",
+    # Workflow types
+    "WorkflowSummary",
+    "WorkflowListResponse",
+    "WorkflowVersion",
+    "WorkflowVersionListResponse",
+    "ExecuteWorkflowResponse",
+    "WorkflowExecutionSummary",
+    "WorkflowExecutionListResponse",
+    # Execution types
+    "ExecutionSummary",
+    "ExecutionDetail",
+    "ExecutionListResponse",
+    # Volume types
+    "Volume",
+    "VolumeListResponse",
+    "VolumeQuota",
+    "VolumeFileEntry",
+    "UploadFileResponse",
+    # Credential types
+    "CredentialSummary",
+    "CredentialGrant",
+    "OAuthInitiateResponse",
+    "DevicePollResponse",
+    # Secret types
+    "SecretEntry",
+    "SecretValue",
+    # API Key types
+    "ApiKeyInfo",
+    "ApiKeyWithValue",
+    # Colony types
+    "ColonyMember",
+    "SamlIdpConfig",
+    "SubscriptionInfo",
+    # Cluster types
+    "ClusterNode",
+    "ClusterStatus",
+    "ClusterNodesResponse",
+    # Swarm types
+    "SwarmSummary",
+    "SwarmListResponse",
+    # Stimulus types
+    "StimulusSummary",
+    "StimulusListResponse",
+    # Observability types
+    "SecurityIncident",
+    "StorageViolation",
+    "DashboardSummary",
+    # Cortex types
+    "CortexPattern",
+    "CortexSkill",
+    "CortexMetrics",
+    # User types
+    "RateLimitBucket",
+    "UserRateLimitUsage",
     # Dispatch Protocol wire types (ADR-040)
     "AgentMessage",
     "OrchestratorMessage",
