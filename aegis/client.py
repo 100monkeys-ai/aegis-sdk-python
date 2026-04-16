@@ -1467,6 +1467,73 @@ class AegisClient:
         return SubscriptionInfo(**response.json())
 
     # ===================================================================
+    # NEW: Billing
+    # ===================================================================
+
+    async def list_prices(self) -> "PricingResponse":
+        """List available pricing tiers. GET /v1/billing/prices"""
+        await self._ensure_token()
+        response = await self._http_client.get(
+            "/v1/billing/prices",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        from .types import PricingResponse
+
+        return PricingResponse(**response.json())
+
+    async def create_checkout_session(
+        self,
+        price_id: str,
+        seat_price_id: Optional[str] = None,
+        seats: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Create a Stripe Checkout Session. POST /v1/billing/checkout"""
+        await self._ensure_token()
+        body: Dict[str, Any] = {"price_id": price_id}
+        if seat_price_id is not None:
+            body["seat_price_id"] = seat_price_id
+        if seats is not None:
+            body["seats"] = seats
+        response = await self._http_client.post(
+            "/v1/billing/checkout",
+            json=body,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+
+    async def create_portal_session(self) -> Dict[str, Any]:
+        """Create a Stripe Customer Portal session. POST /v1/billing/portal"""
+        await self._ensure_token()
+        response = await self._http_client.post(
+            "/v1/billing/portal",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+
+    async def get_subscription_billing(self) -> Dict[str, Any]:
+        """Get subscription billing details. GET /v1/billing/subscription"""
+        await self._ensure_token()
+        response = await self._http_client.get(
+            "/v1/billing/subscription",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+
+    async def get_invoices(self) -> Dict[str, Any]:
+        """List invoices. GET /v1/billing/invoices"""
+        await self._ensure_token()
+        response = await self._http_client.get(
+            "/v1/billing/invoices",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+
+    # ===================================================================
     # NEW: Cluster
     # ===================================================================
 

@@ -81,6 +81,10 @@ from .types import (
     ColonyMember,
     SamlIdpConfig,
     SubscriptionInfo,
+    # Billing types
+    PricingResponse,
+    TierPrice,
+    TierPricing,
     # Cluster types
     ClusterNode,
     ClusterNodesResponse,
@@ -169,6 +173,10 @@ __all__ = [
     "ColonyMember",
     "SamlIdpConfig",
     "SubscriptionInfo",
+    # Billing types
+    "PricingResponse",
+    "TierPrice",
+    "TierPricing",
     # Cluster types
     "ClusterNode",
     "ClusterStatus",

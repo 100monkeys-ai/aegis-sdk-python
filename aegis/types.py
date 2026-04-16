@@ -762,6 +762,45 @@ class CortexMetrics(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Billing types
+# ---------------------------------------------------------------------------
+
+
+class TierPrice(BaseModel):
+    """A single price entry for a tier."""
+
+    model_config = ConfigDict(extra="allow")
+
+    price_id: str
+    amount: int
+    currency: str
+
+
+class TierPricing(BaseModel):
+    """Pricing information for a subscription tier."""
+
+    model_config = ConfigDict(extra="allow")
+
+    tier: str
+    product_id: str
+    name: str
+    description: str
+    included_seats: int
+    monthly: Optional[TierPrice] = None
+    annual: Optional[TierPrice] = None
+    seat_monthly: Optional[TierPrice] = None
+    seat_annual: Optional[TierPrice] = None
+
+
+class PricingResponse(BaseModel):
+    """Response from GET /v1/billing/prices."""
+
+    model_config = ConfigDict(extra="allow")
+
+    tiers: List[TierPricing]
+
+
+# ---------------------------------------------------------------------------
 # User types
 # ---------------------------------------------------------------------------
 
