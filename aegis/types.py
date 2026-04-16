@@ -3,7 +3,6 @@
 from typing import Any, Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ---------------------------------------------------------------------------
 # Existing types (preserved)
 # ---------------------------------------------------------------------------
