@@ -47,6 +47,7 @@ from .types import (
     VolumeListResponse,
     VolumeQuota,
     WorkflowExecutionListResponse,
+    PricingResponse,
     WorkflowExecutionLogs,
     WorkflowExecutionSummary,
     WorkflowListResponse,
@@ -1478,8 +1479,6 @@ class AegisClient:
             headers=self._auth_headers(),
         )
         response.raise_for_status()
-        from .types import PricingResponse
-
         return PricingResponse(**response.json())
 
     async def create_checkout_session(
