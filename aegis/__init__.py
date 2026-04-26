@@ -61,6 +61,7 @@ from .types import (
     ExecutionListResponse,
     ExecutionSummary,
     # Volume types
+    AttachmentRef,
     UploadFileResponse,
     Volume,
     VolumeFileEntry,
@@ -158,6 +159,7 @@ __all__ = [
     "VolumeQuota",
     "VolumeFileEntry",
     "UploadFileResponse",
+    "AttachmentRef",
     # Credential types
     "CredentialSummary",
     "CredentialGrant",

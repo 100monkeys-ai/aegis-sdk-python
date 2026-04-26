@@ -458,6 +458,26 @@ class UploadFileResponse(BaseModel):
     uploaded_at: str
 
 
+class AttachmentRef(BaseModel):
+    """A structured reference to a file attached to an execution.
+
+    Mirrors the ``AttachmentRef`` proto message carried on
+    ``ExecuteAgentRequest.attachments``. Returned by
+    :py:meth:`AegisClient.attach_to_volume` and accepted by
+    ``execute_agent`` / ``start_execution`` / ``execute_workflow`` via
+    their ``attachments`` parameter.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    volume_id: str
+    path: str
+    name: str
+    mime_type: str
+    size: int
+    sha256: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 # Credential types
 # ---------------------------------------------------------------------------

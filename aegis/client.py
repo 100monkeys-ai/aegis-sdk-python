@@ -12,6 +12,7 @@ from .types import (
     AgentVersionListResponse,
     ApiKeyWithValue,
     ApprovalResponse,
+    AttachmentRef,
     ClusterNodesResponse,
     ClusterStatus,
     ColonyMember,
@@ -55,6 +56,7 @@ from .types import (
     WorkflowVersion,
     WorkflowVersionListResponse,
 )
+from .uploads import FileSource, attach_to_volume as _attach_to_volume
 
 
 class AegisClient:
@@ -131,14 +133,22 @@ class AegisClient:
         input: str,
         intent: Optional[str] = None,
         context_overrides: Optional[Any] = None,
+        attachments: Optional[List[AttachmentRef]] = None,
     ) -> StartExecutionResponse:
-        """Start a new execution. POST /v1/executions"""
+        """Start a new execution. POST /v1/executions
+
+        ``attachments`` is wired through to ``ExecuteAgentRequest.attachments``
+        on the proto (per ADR-113). Each ref is typically obtained from
+        :py:meth:`attach_to_volume`.
+        """
         await self._ensure_token()
         payload: Dict[str, Any] = {"agent_id": agent_id, "input": input}
         if intent is not None:
             payload["intent"] = intent
         if context_overrides is not None:
             payload["context_overrides"] = context_overrides
+        if attachments:
+            payload["attachments"] = [ref.model_dump(exclude_none=True) for ref in attachments]
         response = await self._http_client.post(
             "/v1/executions",
             json=payload,
@@ -593,14 +603,22 @@ class AegisClient:
         input: Any,
         intent: Optional[str] = None,
         context_overrides: Optional[Any] = None,
+        attachments: Optional[List[AttachmentRef]] = None,
     ) -> ExecuteAgentResponse:
-        """Execute an agent. POST /v1/agents/{id}/execute"""
+        """Execute an agent. POST /v1/agents/{id}/execute
+
+        ``attachments`` is wired through to ``ExecuteAgentRequest.attachments``
+        on the proto (per ADR-113). Each ref is typically obtained from
+        :py:meth:`attach_to_volume`.
+        """
         await self._ensure_token()
         payload: Dict[str, Any] = {"input": input}
         if intent is not None:
             payload["intent"] = intent
         if context_overrides is not None:
             payload["context_overrides"] = context_overrides
+        if attachments:
+            payload["attachments"] = [ref.model_dump(exclude_none=True) for ref in attachments]
         response = await self._http_client.post(
             f"/v1/agents/{agent_id}/execute",
             json=payload,
@@ -871,8 +889,14 @@ class AegisClient:
         input: Optional[Any] = None,
         version: Optional[str] = None,
         timeout: Optional[int] = None,
+        attachments: Optional[List[AttachmentRef]] = None,
     ) -> ExecuteWorkflowResponse:
-        """Execute a workflow. POST /v1/workflows/{name}/execute"""
+        """Execute a workflow. POST /v1/workflows/{name}/execute
+
+        ``attachments`` is wired through to the workflow execution input per
+        ADR-113. Each ref is typically obtained from
+        :py:meth:`attach_to_volume`.
+        """
         await self._ensure_token()
         payload: Dict[str, Any] = {}
         if input is not None:
@@ -881,6 +905,8 @@ class AegisClient:
             payload["version"] = version
         if timeout is not None:
             payload["timeout"] = timeout
+        if attachments:
+            payload["attachments"] = [ref.model_dump(exclude_none=True) for ref in attachments]
         response = await self._http_client.post(
             f"/v1/workflows/{workflow_name}/execute",
             json=payload,
@@ -1068,6 +1094,40 @@ class AegisClient:
         )
         response.raise_for_status()
         return response.content
+
+    async def attach_to_volume(
+        self,
+        volume_id: str,
+        file: FileSource,
+        *,
+        path: Optional[str] = None,
+        name: Optional[str] = None,
+        mime_type: Optional[str] = None,
+    ) -> AttachmentRef:
+        """Stream a file to a user volume and return a structured ``AttachmentRef``.
+
+        Per ADR-113, lifetime is named explicitly by the volume the caller
+        chooses — there is no implicit default. Pass
+        ``volume_id="chat-attachments"`` to use the reserved per-user volume
+        (lazy-provisioned by the orchestrator on first upload). Any other
+        name must already exist.
+
+        The returned ``AttachmentRef`` carries the orchestrator's
+        authoritative ``mime_type`` (it content-sniffs server-side and may
+        correct the client-inferred value), ``size``, and (when available)
+        ``sha256``. Pass it through ``execute_agent``, ``start_execution``,
+        or ``execute_workflow`` via the ``attachments`` parameter.
+        """
+        await self._ensure_token()
+        return await _attach_to_volume(
+            self._http_client,
+            self._auth_headers(),
+            volume_id,
+            file,
+            path=path,
+            name=name,
+            mime_type=mime_type,
+        )
 
     async def upload_file(
         self,
