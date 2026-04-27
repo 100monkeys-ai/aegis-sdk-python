@@ -353,6 +353,7 @@ class WorkflowExecutionSummary(BaseModel):
     started_at: str
     ended_at: Optional[str] = None
     current_state: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class WorkflowExecutionListResponse(BaseModel):
@@ -380,6 +381,7 @@ class ExecutionSummary(BaseModel):
     status: str
     started_at: str
     ended_at: Optional[str] = None
+    summary: Optional[str] = None
 
 
 class ExecutionDetail(ExecutionSummary):
