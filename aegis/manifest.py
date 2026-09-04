@@ -75,11 +75,26 @@ class RuntimeConfig(BaseModel):
     @field_validator("language", "version", "image", mode="before")
     @classmethod
     def validate_runtime(cls, v: Any) -> Any:
-        """Validate that exactly one runtime mode is specified."""
+        """Reject a blank runtime field rather than letting it count as "specified".
+
+        A field validator sees one field and cannot decide mutual exclusion; that rule
+        is in `model_post_init` below. What belongs here is the half that rule depends
+        on: `""` and `"   "` are not None, so they reach the cross-field rule as a
+        runtime that was specified. `image=""` then failed with "image must be
+        fully-qualified", which is not what is wrong with it, and `language=""` counted
+        as a language.
+        """
+        if isinstance(v, str) and not v.strip():
+            raise ValueError("runtime fields must not be blank")
         return v
 
-    def model_post_init__(self, __context: Any) -> None:
-        """Validate mutual exclusion after model initialization."""
+    def model_post_init(self, context: Any, /) -> None:
+        """Validate mutual exclusion after model initialization.
+
+        The name is load-bearing. This was `model_post_init__`, with a trailing
+        double underscore, so pydantic never called it and every rule below was
+        dead from the day it was written.
+        """
         has_standard = self.language is not None and self.version is not None
         has_language_only = self.language is not None and self.version is None
         has_version_only = self.version is not None and self.language is None
