@@ -21,7 +21,14 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pip-audit
-      - run: pip-audit . || true
+      # `|| true` was here and made this job incapable of failing, which is why
+      # Security Audit has been green on every run while CI was red. An audit that
+      # cannot fail is not a gate; it is a log line. Measured on the resolved
+      # runtime tree at the time this was removed: "No known vulnerabilities found"
+      # across all 16 packages, so this change makes the gate real without changing
+      # its verdict. The only skip is aegis-sdk itself, which is not on PyPI; a skip
+      # is not an error unless --strict is passed, and it deliberately is not.
+      - run: pip-audit .
 
   codeql:
     name: CodeQL Analysis
