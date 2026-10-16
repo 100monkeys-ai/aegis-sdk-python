@@ -109,7 +109,7 @@ from .types import (
     UserRateLimitUsage,
 )
 
-__version__ = "0.15.0a0"
+__version__ = "1.0.0b0"
 
 __all__ = [
     # Control-plane client
