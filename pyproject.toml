@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=84.0.0", "wheel"]
+requires = ["setuptools>=84.2.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,10 +30,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
+    "pytest-asyncio>=1.4.1",
     "black==26.10.1",
-    "mypy==2.3.1",
-    "ruff==0.16.9",
+    "mypy==2.4.0",
+    "ruff==0.17.2",
     "types-PyYAML",
 ]
 
