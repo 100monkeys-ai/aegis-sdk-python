@@ -84,60 +84,6 @@ async def test_start_execution_with_overrides():
 
 
 @pytest.mark.asyncio
-async def test_list_pending_approvals():
-    client = make_client()
-    client._ensure_token = AsyncMock()
-    client._access_token = "tok"
-    mock_response = MagicMock()
-    mock_response.json.return_value = {
-        "pending_requests": [
-            {
-                "id": "a-1",
-                "execution_id": "e-1",
-                "prompt": "approve?",
-                "created_at": "2026-01-01T00:00:00Z",
-                "timeout_seconds": 300,
-            }
-        ]
-    }
-    mock_response.raise_for_status = MagicMock()
-    client._http_client.get = AsyncMock(return_value=mock_response)
-
-    result = await client.list_pending_approvals()
-    assert len(result) == 1
-    assert result[0].id == "a-1"
-    assert result[0].execution_id == "e-1"
-
-
-@pytest.mark.asyncio
-async def test_approve_request():
-    client = make_client()
-    client._ensure_token = AsyncMock()
-    client._access_token = "tok"
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"status": "approved"}
-    mock_response.raise_for_status = MagicMock()
-    client._http_client.post = AsyncMock(return_value=mock_response)
-
-    result = await client.approve_request("a-1", feedback="looks good")
-    assert result.status == "approved"
-
-
-@pytest.mark.asyncio
-async def test_reject_request():
-    client = make_client()
-    client._ensure_token = AsyncMock()
-    client._access_token = "tok"
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"status": "rejected"}
-    mock_response.raise_for_status = MagicMock()
-    client._http_client.post = AsyncMock(return_value=mock_response)
-
-    result = await client.reject_request("a-1", reason="not ready")
-    assert result.status == "rejected"
-
-
-@pytest.mark.asyncio
 async def test_attest_seal():
     client = make_client()
     client._ensure_token = AsyncMock()

@@ -24,11 +24,9 @@ from .seal import (
 )
 from .types import (
     # Existing types
-    ApprovalResponse,
     CreateRateLimitOverrideRequest,
     CreateTenantRequest,
     ExecutionEvent,
-    PendingApproval,
     RateLimitOverride,
     SealAttestationRequest,
     SealAttestationResponse,
@@ -119,8 +117,6 @@ __all__ = [
     "StartExecutionRequest",
     "StartExecutionResponse",
     "ExecutionEvent",
-    "PendingApproval",
-    "ApprovalResponse",
     "SealAttestationRequest",
     "SealAttestationResponse",
     "SealToolInvokeRequest",
