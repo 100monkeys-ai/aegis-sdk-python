@@ -11,7 +11,6 @@ from .types import (
     AgentListResponse,
     AgentVersionListResponse,
     ApiKeyWithValue,
-    ApprovalResponse,
     AttachmentRef,
     ClusterNodesResponse,
     ClusterStatus,
@@ -28,7 +27,6 @@ from .types import (
     ExecutionEvent,
     ExecutionListResponse,
     OAuthInitiateResponse,
-    PendingApproval,
     RateLimitOverride,
     SamlIdpConfig,
     SealAttestationResponse,
@@ -181,72 +179,6 @@ class AegisClient:
                             event_type=parsed.get("type", "unknown"),
                             data=parsed,
                         )
-
-    # -----------------------------------------------------------------------
-    # Human Approvals (existing)
-    # -----------------------------------------------------------------------
-
-    async def list_pending_approvals(self) -> List[PendingApproval]:
-        """List pending approval requests. GET /v1/human-approvals"""
-        await self._ensure_token()
-        response = await self._http_client.get(
-            "/v1/human-approvals",
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [PendingApproval(**req) for req in data.get("pending_requests", [])]
-
-    async def get_pending_approval(self, approval_id: str) -> PendingApproval:
-        """Get a specific pending approval. GET /v1/human-approvals/{id}"""
-        await self._ensure_token()
-        response = await self._http_client.get(
-            f"/v1/human-approvals/{approval_id}",
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        data = response.json()
-        return PendingApproval(**data.get("request", {}))
-
-    async def approve_request(
-        self,
-        approval_id: str,
-        feedback: Optional[str] = None,
-        approved_by: Optional[str] = None,
-    ) -> ApprovalResponse:
-        """Approve a pending request. POST /v1/human-approvals/{id}/approve"""
-        await self._ensure_token()
-        payload: Dict[str, str] = {}
-        if feedback:
-            payload["feedback"] = feedback
-        if approved_by:
-            payload["approved_by"] = approved_by
-        response = await self._http_client.post(
-            f"/v1/human-approvals/{approval_id}/approve",
-            json=payload,
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        return ApprovalResponse(**response.json())
-
-    async def reject_request(
-        self,
-        approval_id: str,
-        reason: str,
-        rejected_by: Optional[str] = None,
-    ) -> ApprovalResponse:
-        """Reject a pending request. POST /v1/human-approvals/{id}/reject"""
-        await self._ensure_token()
-        payload: Dict[str, Any] = {"reason": reason}
-        if rejected_by:
-            payload["rejected_by"] = rejected_by
-        response = await self._http_client.post(
-            f"/v1/human-approvals/{approval_id}/reject",
-            json=payload,
-            headers=self._auth_headers(),
-        )
-        response.raise_for_status()
-        return ApprovalResponse(**response.json())
 
     # -----------------------------------------------------------------------
     # SEAL (existing)

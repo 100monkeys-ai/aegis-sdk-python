@@ -36,26 +36,6 @@ class ExecutionEvent(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
 
 
-class PendingApproval(BaseModel):
-    """A pending human approval request (PendingRequestInfo from the platform)."""
-
-    model_config = ConfigDict(extra="allow")
-
-    id: str
-    execution_id: str
-    prompt: str
-    created_at: str
-    timeout_seconds: int
-
-
-class ApprovalResponse(BaseModel):
-    """Response from approve/reject endpoints."""
-
-    model_config = ConfigDict(extra="allow")
-
-    status: str
-
-
 class SealAttestationRequest(BaseModel):
     """Request body for POST /v1/seal/attest."""
 
